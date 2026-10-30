@@ -153,6 +153,16 @@ activemq-data/
 .env
 .envrc
 .venv
+.models/
+models/
+data/
+uploads/
+*.pt
+*.pth
+*.onnx
+*.h5
+*.safetensors
+*.ckpt
 env/
 venv/
 ENV/

@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Manrope:wght@100..900&display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "secondary-fixed": "#ffdad7", "outline-variant": "#3d4a42", "surface-container-lowest": "#060e20", "on-background": "#dae2fd", "on-secondary-fixed-variant": "#930013", "surface-bright": "#31394d", "error": "#ffb4ab", "inverse-surface": "#dae2fd", "on-primary-fixed-variant": "#005137", "surface-container-high": "#222a3d", "on-tertiary-fixed-variant": "#7f2928", "error-container": "#93000a", "on-secondary-fixed": "#410004", "surface-dim": "#0b1326", "on-tertiary-fixed": "#410004", "on-surface-variant": "#bccac0", "on-primary": "#003825", "on-tertiary-container": "#570b0e", "primary": "#68dba9", "secondary-fixed-dim": "#ffb3ad", "tertiary-fixed": "#ffdad7", "inverse-primary": "#006c4a", "on-surface": "#dae2fd", "on-primary-fixed": "#002114", "tertiary-fixed-dim": "#ffb3ae", "surface": "#0b1326", "primary-container": "#25a475", "surface-variant": "#2d3449", "on-secondary": "#68000a", "surface-container": "#171f33", "on-primary-container": "#00311f", "on-error-container": "#ffdad6", "on-error": "#690005", "primary-fixed-dim": "#68dba9", "secondary": "#ffb3ad", "outline": "#87948b", "background": "#0b1326", "surface-tint": "#68dba9", "on-tertiary": "#601214", "surface-container-low": "#131b2e", "tertiary": "#ffb3ae", "surface-container-highest": "#2d3449", "secondary-container": "#a40217", "inverse-on-surface": "#283044", "on-secondary-container": "#ffaea8", "tertiary-container": "#dd706b", "primary-fixed": "#85f8c4" }, "borderRadius": { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" }, "spacing": { "space-xs": "0.25rem", "space-sm": "0.5rem", "gutter": "1rem", "margin": "1rem", "margin-desktop": "2rem", "space-xl": "1.5rem", "space-md": "0.75rem", "space-lg": "1rem", "space-2xl": "2rem", "gutter-desktop": "1.5rem" }, "fontFamily": { "body-md": ["Geist"], "display-lg": ["Manrope"], "headline-xl": ["Manrope"], "body-sm": ["Geist"], "label-caps": ["Geist"], "headline-md": ["Manrope"], "headline-lg": ["Manrope"], "mono-metric": ["Geist"], "body-lg": ["Geist"], "mono-data": ["Geist"] }, "fontSize": { "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }], "display-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700" }], "headline-xl": ["28px", { "lineHeight": "36px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "body-sm": ["12px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "400" }], "label-caps": ["11px", { "lineHeight": "14px", "letterSpacing": "0.06em", "fontWeight": "600" }], "headline-md": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.005em", "fontWeight": "600" }], "headline-lg": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "mono-metric": ["24px", { "lineHeight": "28px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }], "mono-data": ["13px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }] } } } };</script></head><body class="bg-background font-body-md text-on-surface min-h-screen"><aside class="fixed left-0 top-16 bottom-0 w-64 bg-surface-container-low shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-40 flex flex-col justify-between p-space-lg"><div class="flex flex-col gap-space-xl"><div class="px-space-sm"><span class="font-label-caps text-label-caps uppercase text-outline tracking-wider">Autonomous Vessels</span></div><nav class="flex flex-col gap-space-xs" data-active-classes="bg-primary-container text-on-primary-container font-headline-md rounded-xl"><a aria-current="page" class="flex items-center gap-space-md px-space-md py-space-sm transition-all bg-primary-container text-on-primary-container font-headline-md rounded-xl" data-path="overview" href="#"><span class="material-symbols-outlined text-[20px]">hub</span><span>Fleet Grid</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl font-body-md text-body-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="live-scan" href="#"><span class="material-symbols-outlined text-[20px]">radar</span><span>Optical Telemetry</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl font-body-md text-body-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="route-planner" href="#"><span class="material-symbols-outlined text-[20px]">near_me</span><span>Waypoints & Grid</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl font-body-md text-body-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="analytics" href="#"><span class="material-symbols-outlined text-[20px]">query_stats</span><span>Harvest Yield</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl font-body-md text-body-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="environmental-logs" href="#"><span class="material-symbols-outlined text-[20px]">file_open</span><span>Biomass Analysis</span></a><a class="flex items-center gap-space-md px-space-md py-space-sm rounded-xl font-body-md text-body-md text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-all" data-path="vessel-maintenance" href="#"><span class="material-symbols-outlined text-[20px]">precision_manufacturing</span><span>Drone Diagnostics</span></a></nav></div><div class="bg-surface-container rounded-xl p-space-md flex flex-col gap-space-xs"><div class="flex items-center justify-between"><span class="font-label-caps text-label-caps text-outline uppercase">Geofence</span><span class="font-mono-data text-mono-data text-primary">STABLE</span></div><div class="font-mono-data text-mono-data text-on-surface">Sector BS-441-N</div><div class="w-full bg-surface-container-high h-1 rounded-full overflow-hidden mt-space-xs"><div class="bg-primary h-full w-4/5 rounded-full"></div></div></div></aside><header class="fixed top-0 left-0 right-0 h-16 bg-surface-container/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)] z-50 flex items-center justify-between px-gutter-desktop"><div class="flex items-center gap-space-2xl"><div class="flex items-center gap-space-md"><img alt="AquaLitter Minimalist Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1XaFLdWBz_hRFdOO4GQxbPMPV8_7_VP8drR5gtG11AwORfAhae7GCiBtOd2EuXe1gGJXC56fgxfXi6AGxhwnq2HeDXrjjzcOUCXsEG2s4SujOEYsFC7JefwyWB66xO4zX0wuaop_oLAtRz_EcA9hxIs58-t1Bkio25s8oBMgcKOneHyp3lAdqWcCZNHTs3oK0ZxjgsGlU7bb3bzR7oj83a2MVczchWn9EoDAahKq1M"/><span class="font-headline-md text-headline-md tracking-tight text-on-surface font-semibold">AquaLitter AI</span></div><nav class="hidden lg:flex items-center gap-space-xs bg-surface-container-low p-space-xs rounded-xl" data-active-classes="bg-primary-container text-on-primary-container font-headline-md rounded-lg"><a aria-current="page" class="px-space-lg py-space-xs transition-colors bg-primary-container text-on-primary-container font-headline-md rounded-lg" data-path="overview" href="#">Overview</a><a class="px-space-lg py-space-xs rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="live-scan" href="#">Live Scan</a><a class="px-space-lg py-space-xs rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="route-planner" href="#">Route Planner</a><a class="px-space-lg py-space-xs rounded-lg font-body-md text-body-md text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" data-path="analytics" href="#">Analytics</a></nav></div><div class="flex items-center gap-space-lg"><div class="flex items-center gap-space-sm px-space-md py-space-xs rounded-full bg-surface-container-low"><span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span><span class="font-mono-data text-mono-data text-on-surface">System Active • Black Sea Zone</span></div><div class="flex items-center gap-space-xs"><button aria-label="Search telemetry" class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">search</span></button><button aria-label="System alerts" class="p-space-sm rounded-xl text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">notifications</span></button></div><div class="flex items-center"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-primary/30" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9zU8EBenD0WVrXXhle9MocOvDEdqBHdgmyp0Y0uuP3AxAs8a7UMjG8BeXJuKzFvNXGXQbKYz2Z7xgTWSKRVzHB6g5zSS_GwKzj2FktgrtUQmbwscWahfobmrM7GGsY2pFIy1Qu_x-jznh7MsUDbBqEEBmwBRojQ6vTARZjMMKvihKQK6khiWhIDrU1DbjX8daN2cSF5m1FGPlLHXn6lj_osies9juBw9hXK8lqU4"/></div></div></header><div class="pl-64"><main class="w-full pt-16 px-gutter-desktop min-h-screen bg-background"><div class="flex flex-col w-full gap-space-xl pb-space-2xl">
+<!-- Top Situational Stream Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-md pt-space-xs">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span>
+<span class="font-label-caps text-label-caps tracking-widest text-primary uppercase">Autonomous Fleet Stream • Telemetry Active</span>
+<span class="text-outline-variant text-body-sm font-mono-data">/</span>
+<span class="font-mono-data text-mono-data text-on-surface-variant">SECTOR BS-TR-04 (TRABZON METRO)</span>
+</div>
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">Black Sea Environmental Fleet Matrix</h1>
+</div>
+<!-- Quick Operational Controls -->
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center gap-space-xs bg-surface-container px-space-md py-space-xs rounded-xl shadow-sm">
+<span class="font-label-caps text-label-caps text-outline uppercase">Wind Vector</span>
+<span class="font-mono-data text-mono-data text-on-surface">14 kt ENE (068°)</span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container px-space-md py-space-xs rounded-xl shadow-sm">
+<span class="font-label-caps text-label-caps text-outline uppercase">Surface Drift</span>
+<span class="font-mono-data text-mono-data text-primary">0.9 kn ↑ 34°</span>
+</div>
+<button aria-label="Refresh telemetry" class="bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface p-space-xs rounded-xl shadow-sm flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">sync</span>
+</button>
+</div>
+</div>
+<!-- 1. Top Metric Cards (4 Compact, High-Contrast KPIs) -->
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-md">
+<!-- Card 1: Total Debris Detected -->
+<div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col justify-between shadow-sm relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-20 h-20 bg-secondary-container/10 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Total Debris Detected</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[18px]">delete_sweep</span>
+</div>
+</div>
+<div class="mt-space-md flex items-baseline justify-between">
+<div>
+<span class="font-display-lg text-display-lg font-bold text-on-surface tracking-tight">1,240</span>
+<span class="font-body-md text-body-md text-on-surface-variant ml-space-xs">kg</span>
+</div>
+<div class="flex items-center gap-space-xs bg-secondary-container/20 text-secondary px-space-sm py-0.5 rounded-full font-mono-data text-body-sm">
+<span class="material-symbols-outlined text-[14px]">arrow_upward</span>
+<span>+12% 7d avg</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between font-mono-data text-body-sm text-outline">
+<span>Accumulation index</span>
+<span class="text-secondary font-medium">Critical (Surmene Spit)</span>
+</div>
+</div>
+<!-- Card 2: Carbon Saved -->
+<div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col justify-between shadow-sm relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-20 h-20 bg-primary/10 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Carbon Offset</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">eco</span>
+</div>
+</div>
+<div class="mt-space-md flex items-baseline justify-between">
+<div>
+<span class="font-display-lg text-display-lg font-bold text-on-surface tracking-tight">495</span>
+<span class="font-body-md text-body-md text-on-surface-variant ml-space-xs">kg CO₂</span>
+</div>
+<div class="flex items-center gap-space-xs bg-primary/15 text-primary px-space-sm py-0.5 rounded-full font-mono-data text-body-sm">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+<span>Target Exceeded</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between font-mono-data text-body-sm text-outline">
+<span>Offset verification</span>
+<span class="text-primary font-medium">ISO-14064 Active</span>
+</div>
+</div>
+<!-- Card 3: Fuel Efficiency -->
+<div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col justify-between shadow-sm relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-20 h-20 bg-primary/10 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Flotilla Efficiency</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">bolt</span>
+</div>
+</div>
+<div class="mt-space-md flex items-baseline justify-between">
+<div>
+<span class="font-display-lg text-display-lg font-bold text-primary tracking-tight">+35%</span>
+<span class="font-body-md text-body-md text-on-surface-variant ml-space-xs">burn cut</span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container text-on-surface-variant px-space-sm py-0.5 rounded-full font-mono-data text-body-sm">
+<span>-185 L marine gas</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between font-mono-data text-body-sm text-outline">
+<span>Path drift penalty</span>
+<span class="text-primary font-medium">Minimized (-4.8%)</span>
+</div>
+</div>
+<!-- Card 4: Active Operations -->
+<div class="bg-surface-container-low rounded-xl p-space-lg flex flex-col justify-between shadow-sm relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 w-20 h-20 bg-surface-bright/20 rounded-full blur-xl pointer-events-none"></div>
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Active Operations</span>
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center text-on-surface">
+<span class="material-symbols-outlined text-[18px]">directions_boat</span>
+</div>
+</div>
+<div class="mt-space-md flex items-baseline justify-between">
+<div>
+<span class="font-display-lg text-display-lg font-bold text-on-surface tracking-tight">3</span>
+<span class="font-body-md text-body-md text-on-surface-variant ml-space-xs">USVs En Route</span>
+</div>
+<div class="flex items-center gap-space-xs bg-surface-container text-primary px-space-sm py-0.5 rounded-full font-mono-data text-body-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span>Trabzon Flotilla</span>
+</div>
+</div>
+<div class="mt-space-md pt-space-xs flex items-center justify-between font-mono-data text-body-sm text-outline">
+<span>Fleet integrity</span>
+<span class="text-on-surface font-medium">100% Autonomous</span>
+</div>
+</div>
+</div>
+<!-- 2. Main Split Grid (65% / 35%) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+<!-- Left Column: Cartographic Map Canvas (approx 65% = 8 cols on desktop) -->
+<div class="lg:col-span-8 flex flex-col bg-surface-container-lowest rounded-xl shadow-xl overflow-hidden relative">
+<!-- Map HUD Top Bar -->
+<div class="absolute top-space-md left-space-md right-space-md z-30 flex items-center justify-between pointer-events-none">
+<!-- Breadcrumb / Mode indicator -->
+<div class="pointer-events-auto flex items-center gap-space-sm bg-surface-container-low/90 backdrop-blur-md px-space-md py-space-xs rounded-xl shadow-md">
+<span class="material-symbols-outlined text-primary text-[18px]">satellite_alt</span>
+<span class="font-headline-md text-body-md font-semibold text-on-surface">Trabzon Coastal Shelf Telemetry</span>
+<span class="font-mono-data text-body-sm text-outline">41.0027° N, 39.7168° E</span>
+</div>
+<!-- Floating Minimalist Map Controls -->
+<div class="pointer-events-auto flex items-center gap-space-xs bg-surface-container-low/90 backdrop-blur-md p-space-xs rounded-xl shadow-md">
+<button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors flex items-center justify-center text-on-surface" title="Zoom in">
+<span class="material-symbols-outlined text-[16px]">add</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors flex items-center justify-center text-on-surface" title="Zoom out">
+<span class="material-symbols-outlined text-[16px]">remove</span>
+</button>
+<div class="w-px h-4 bg-outline-variant mx-1"></div>
+<button class="px-space-sm h-8 rounded-lg bg-primary-container text-on-primary-container font-mono-data text-body-sm font-semibold flex items-center gap-space-xs shadow-sm">
+<span class="material-symbols-outlined text-[14px]">local_fire_department</span>
+<span>Heatmap</span>
+</button>
+<button class="px-space-sm h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-mono-data text-body-sm flex items-center gap-space-xs transition-colors">
+<span class="material-symbols-outlined text-[14px]">waves</span>
+<span>Currents</span>
+</button>
+<button class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface flex items-center justify-center" title="Compass Orient North">
+<span class="material-symbols-outlined text-[16px] text-primary rotate-45">explore</span>
+</button>
+</div>
+</div>
+<!-- Vector Map Canvas (High-Precision Dark Cartography) -->
+<div class="relative w-full h-[580px] bg-surface-container-lowest overflow-hidden select-none">
+<!-- SVG Vector Map Representation -->
+<svg class="w-full h-full object-cover" viewbox="0 0 1000 620">
+<defs>
+<!-- Water Pattern -->
+<pattern height="40" id="grid" patternunits="userSpaceOnUse" width="40">
+<path class="text-surface-container/30" d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" stroke-width="0.5"></path>
+</pattern>
+<!-- Bathymetry Contour Gradients -->
+<lineargradient id="deepWater" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#060e20"></stop>
+<stop offset="100%" stop-color="#0b1326"></stop>
+</lineargradient>
+<!-- Hotspot Radial Gradients -->
+<radialgradient cx="50%" cy="50%" id="hotspotSurmene" r="50%">
+<stop offset="0%" stop-color="#ffb3ad" stop-opacity="0.8"></stop>
+<stop offset="40%" stop-color="#a40217" stop-opacity="0.45"></stop>
+<stop offset="100%" stop-color="#a40217" stop-opacity="0"></stop>
+</radialgradient>
+<radialgradient cx="50%" cy="50%" id="hotspotYomra" r="50%">
+<stop offset="0%" stop-color="#ffb3ad" stop-opacity="0.7"></stop>
+<stop offset="50%" stop-color="#dd706b" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#dd706b" stop-opacity="0"></stop>
+</radialgradient>
+<radialgradient cx="50%" cy="50%" id="hotspotAkcaabat" r="50%">
+<stop offset="0%" stop-color="#ffb3ad" stop-opacity="0.6"></stop>
+<stop offset="60%" stop-color="#dd706b" stop-opacity="0.25"></stop>
+<stop offset="100%" stop-color="#dd706b" stop-opacity="0"></stop>
+</radialgradient>
+<!-- Glow Filter for Route -->
+<filter height="140%" id="emeraldGlow" width="140%" x="-20%" y="-20%">
+<fegaussianblur result="blur" stddeviation="3.5"></fegaussianblur>
+<fecomposite in="SourceGraphic" in2="blur" operator="over"></fecomposite>
+</filter>
+</defs>
+<!-- Water Canvas Base -->
+<rect fill="url(#deepWater)" height="620" width="1000"></rect>
+<rect fill="url(#grid)" height="620" width="1000"></rect>
+<!-- Bathymetric Depth Contours -->
+<path class="text-surface-container-high/40" d="M 0,160 Q 250,140 520,180 T 1000,140" fill="none" stroke="currentColor" stroke-dasharray="3,3" stroke-width="1.2"></path>
+<text class="fill-outline text-[9px] font-mono-data tracking-widest" x="30" y="152">-120m</text>
+<path class="text-surface-container-high/40" d="M 0,270 Q 320,240 640,290 T 1000,240" fill="none" stroke="currentColor" stroke-dasharray="4,4" stroke-width="1.2"></path>
+<text class="fill-outline text-[9px] font-mono-data tracking-widest" x="30" y="262">-60m</text>
+<path class="text-surface-container-high/50" d="M 0,380 Q 280,360 620,410 T 1000,350" fill="none" stroke="currentColor" stroke-width="1"></path>
+<text class="fill-outline text-[9px] font-mono-data tracking-widest" x="30" y="374">-25m SHELF</text>
+<!-- Continental Landmass Contour (Trabzon Coastline) -->
+<!-- Coast starts around y=440 and fills down to y=620 -->
+<path d="M -10,480 
+                   C 120,460 210,490 320,470 
+                   C 420,450 510,490 620,465 
+                   C 730,440 820,455 930,430 
+                   L 1010,425 L 1010,630 L -10,630 Z" fill="#131b2e"></path>
+<!-- Coastal Shoreline Stroke -->
+<path class="text-outline-variant" d="M -10,480 
+                   C 120,460 210,490 320,470 
+                   C 420,450 510,490 620,465 
+                   C 730,440 820,455 930,430 
+                   L 1010,425" fill="none" stroke="currentColor" stroke-width="2.5"></path>
+<!-- Topographic Elevation Ribbons on Land -->
+<path class="text-surface-container-high/60" d="M 0,530 Q 320,510 650,520 T 1010,490" fill="none" stroke="currentColor" stroke-width="1"></path>
+<path class="text-surface-container-high/60" d="M 0,580 Q 280,560 600,570 T 1010,540" fill="none" stroke="currentColor" stroke-width="1"></path>
+<!-- Coastal Labels -->
+<text class="fill-outline text-[11px] font-headline-md font-semibold tracking-wider uppercase" x="140" y="525">Akçaabat Port</text>
+<text class="fill-on-surface text-[12px] font-headline-md font-bold tracking-widest uppercase" x="470" y="515">Trabzon Harbor</text>
+<text class="fill-outline text-[11px] font-headline-md font-semibold tracking-wider uppercase" x="680" y="505">Yomra Marina</text>
+<text class="fill-on-surface text-[12px] font-headline-md font-bold tracking-widest uppercase" x="860" y="475">Sürmene Shelf</text>
+<!-- Current & Drift Vectors -->
+<g class="text-primary/30" stroke="currentColor" stroke-width="1.2">
+<!-- Drift Vector Arrows -->
+<path d="M 200,220 L 235,210" marker-end="url(#arrow)"></path>
+<path d="M 450,260 L 490,245"></path>
+<path d="M 720,280 L 760,265"></path>
+</g>
+<!-- DEBRIS HOTSPOTS (Thermal Radiance Zones) -->
+<!-- Hotspot 1: Akçaabat (220 kg) -->
+<circle cx="210" cy="400" fill="url(#hotspotAkcaabat)" r="55"></circle>
+<circle class="fill-secondary animate-pulse" cx="210" cy="400" r="4"></circle>
+<!-- Hotspot 2: Yomra Spit (310 kg) -->
+<circle cx="680" cy="380" fill="url(#hotspotYomra)" r="70"></circle>
+<circle class="fill-secondary animate-pulse" cx="680" cy="380" r="5"></circle>
+<!-- Hotspot 3: Sürmene Coast (480 kg - Focal Point) -->
+<circle cx="870" cy="330" fill="url(#hotspotSurmene)" r="95"></circle>
+<circle class="fill-error animate-ping" cx="870" cy="330" r="6"></circle>
+<circle class="fill-secondary" cx="870" cy="330" r="6"></circle>
+<!-- AI OPTIMIZED CLEANUP ROUTE (Glowing Emerald Polyline) -->
+<path class="animate-pulse" d="M 120,360 
+                   L 210,400 
+                   Q 330,340 460,370 
+                   T 680,380 
+                   L 870,330 
+                   L 940,260" fill="none" filter="url(#emeraldGlow)" stroke="#68dba9" stroke-dasharray="6,4" stroke-width="3"></path>
+<!-- Solid inner route core line -->
+<path d="M 120,360 
+                   L 210,400 
+                   Q 330,340 460,370 
+                   T 680,380 
+                   L 870,330 
+                   L 940,260" fill="none" stroke="#ffffff" stroke-width="1.2"></path>
+<!-- Waypoints -->
+<circle class="fill-primary stroke-surface stroke-2" cx="120" cy="360" r="4"></circle>
+<circle class="fill-primary stroke-surface stroke-2" cx="210" cy="400" r="4"></circle>
+<circle class="fill-primary stroke-surface stroke-2" cx="460" cy="370" r="4"></circle>
+<circle class="fill-primary stroke-surface stroke-2" cx="680" cy="380" r="4"></circle>
+<circle class="fill-secondary stroke-surface stroke-2" cx="870" cy="330" r="5"></circle>
+<!-- Autonomous Vessel Marker: Vessel Alpha-01 en route -->
+<g transform="translate(560, 375)">
+<!-- Ping rings -->
+<circle class="fill-primary/20 animate-ping" cx="0" cy="0" r="16"></circle>
+<circle class="fill-primary/40" cx="0" cy="0" r="8"></circle>
+<!-- Boat glyph shape -->
+<polygon class="fill-on-primary-fixed" points="0,-9 6,6 0,3 -6,6" transform="rotate(78)"></polygon>
+</g>
+<!-- Autonomous Vessel Marker 2: Vessel Beta-02 -->
+<g transform="translate(190, 405)">
+<circle class="fill-primary/40" cx="0" cy="0" r="6"></circle>
+<polygon class="fill-primary" points="0,-7 5,5 0,2 -5,5" transform="rotate(110)"></polygon>
+</g>
+<!-- Autonomous Vessel Marker 3: Vessel Gamma-03 -->
+<g transform="translate(740, 365)">
+<circle class="fill-primary/40" cx="0" cy="0" r="6"></circle>
+<polygon class="fill-primary" points="0,-7 5,5 0,2 -5,5" transform="rotate(62)"></polygon>
+</g>
+</svg>
+<!-- Dynamic Floating Debris Callout Overlays -->
+<!-- Hotspot 1 Callout: Akçaabat -->
+<div class="absolute left-[16%] top-[60%] bg-surface-container-low/90 backdrop-blur-md px-space-sm py-space-xs rounded-lg shadow-lg pointer-events-none hidden sm:block">
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-label-caps text-label-caps text-on-surface uppercase">Akçaabat Bay</span>
+</div>
+<div class="font-mono-data text-body-sm text-secondary font-bold">220 kg • 0.8 kn W</div>
+</div>
+<!-- Hotspot 2 Callout: Yomra Spit -->
+<div class="absolute left-[62%] top-[57%] bg-surface-container-low/90 backdrop-blur-md px-space-sm py-space-xs rounded-lg shadow-lg pointer-events-none hidden sm:block">
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-label-caps text-label-caps text-on-surface uppercase">Yomra Spit</span>
+</div>
+<div class="font-mono-data text-body-sm text-secondary font-bold">310 kg • 1.1 kn NE</div>
+</div>
+<!-- Hotspot 3 Focused HUD: Sürmene Coast (Target Area) -->
+<div class="absolute right-[6%] top-[34%] bg-surface-container/95 backdrop-blur-md p-space-md rounded-xl shadow-2xl max-w-[210px]">
+<div class="flex items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-secondary uppercase font-semibold">Priority Intercept</span>
+</div>
+<span class="bg-secondary-container/30 text-secondary text-label-caps font-mono-data px-1.5 py-0.5 rounded">96.4% CONF</span>
+</div>
+<div class="mt-space-xs font-headline-md text-headline-md text-on-surface font-bold">Sürmene Shelf</div>
+<div class="mt-space-xs space-y-0.5 font-mono-data text-body-sm">
+<div class="flex justify-between text-on-surface-variant">
+<span>Estimated Mass:</span>
+<span class="text-secondary font-bold">480 kg</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>Drift Vector:</span>
+<span class="text-on-surface">1.4 kn NE (048°)</span>
+</div>
+<div class="flex justify-between text-on-surface-variant">
+<span>Interception ETA:</span>
+<span class="text-primary font-semibold">42 min</span>
+</div>
+</div>
+</div>
+<!-- Vessel Alpha-01 Live Floating Pin Tag -->
+<div class="absolute left-[54%] top-[52%] -translate-y-8 bg-surface-container-high/90 backdrop-blur-md px-space-sm py-0.5 rounded-full shadow-md flex items-center gap-space-xs pointer-events-none">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-mono-data text-body-sm font-semibold text-primary">USV Alpha-01</span>
+<span class="font-mono-data text-body-sm text-on-surface-variant">• 8.2 kn</span>
+</div>
+</div>
+<!-- Map Footer Strip: Real-time Vessel Telemetry Feed -->
+<div class="bg-surface-container-low px-space-lg py-space-md flex flex-wrap items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-lg">
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[16px]">navigation</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-outline uppercase">Active Unit</span>
+<span class="font-mono-data text-mono-data font-bold text-on-surface">USV Alpha-01 (Autonomous Flagship)</span>
+</div>
+</div>
+<div class="hidden sm:flex items-center gap-space-lg font-mono-data text-body-sm">
+<div>
+<span class="text-outline block text-label-caps uppercase">Heading</span>
+<span class="text-on-surface font-semibold">064° ENE</span>
+</div>
+<div>
+<span class="text-outline block text-label-caps uppercase">Velocity</span>
+<span class="text-on-surface font-semibold">8.2 kn</span>
+</div>
+<div>
+<span class="text-outline block text-label-caps uppercase">Waypoints Remaining</span>
+<span class="text-primary font-semibold">3 / 7</span>
+</div>
+<div>
+<span class="text-outline block text-label-caps uppercase">Payload Reservoir</span>
+<span class="text-on-surface font-semibold">68% Available</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-space-sm">
+<div class="flex items-center gap-space-xs bg-surface-container px-space-md py-space-xs rounded-lg font-mono-data text-body-sm">
+<span class="text-outline">ETA Sürmene Point:</span>
+<span class="text-primary font-bold">42m 18s</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Detail & Autonomous Control Panel (approx 35% = 4 cols on desktop) -->
+<div class="lg:col-span-4 flex flex-col gap-space-md">
+<!-- Widget 1: Selected Zone Summary Card -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-start justify-between">
+<div>
+<div class="flex items-center gap-space-xs mb-space-xs">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-label-caps text-label-caps uppercase text-secondary tracking-wider">Active Focus Area</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">Sürmene Coast Cluster</h2>
+<span class="font-mono-data text-body-sm text-outline">Grid Node: TR-SUR-884</span>
+</div>
+<span class="bg-secondary-container/20 text-secondary text-label-caps font-mono-data px-space-sm py-space-xs rounded-full">HIGH DENSITY</span>
+</div>
+<!-- Key Metrics Strip -->
+<div class="grid grid-cols-3 gap-space-xs bg-surface-container p-space-sm rounded-xl">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-outline uppercase">Est. Mass</span>
+<span class="font-mono-metric text-mono-metric font-bold text-on-surface">480<span class="text-body-sm text-outline font-normal">kg</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-outline uppercase">Drift Velocity</span>
+<span class="font-mono-metric text-mono-metric font-bold text-on-surface">1.4<span class="text-body-sm text-outline font-normal">kn</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-outline uppercase">AI Score</span>
+<span class="font-mono-metric text-mono-metric font-bold text-primary">96.4<span class="text-body-sm text-outline font-normal">%</span></span>
+</div>
+</div>
+<!-- Risk Bar -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between text-body-sm font-mono-data">
+<span class="text-outline uppercase text-label-caps font-semibold">Accumulation Threat Index</span>
+<span class="text-secondary font-bold">84 / 100 • SEVERE</span>
+</div>
+<!-- Gauge segmented indicator -->
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden flex">
+<div class="bg-primary h-full w-[40%]"></div>
+<div class="bg-tertiary-container h-full w-[25%]"></div>
+<div class="bg-secondary-container h-full w-[19%]"></div>
+<div class="bg-surface-container-high h-full w-[16%]"></div>
+</div>
+<span class="text-body-sm text-on-surface-variant font-body-sm mt-0.5">
+            Rapid convergence detected due to shoreline rip currents along coastal rip rap.
+          </span>
+</div>
+</div>
+<!-- Widget 2: Detected Debris Composition -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px]">donut_small</span>
+<h3 class="font-headline-md text-headline-md text-on-surface font-semibold">Spectrometric Breakdown</h3>
+</div>
+<span class="font-mono-data text-body-sm text-outline">NIR Sensors</span>
+</div>
+<!-- Composition bars -->
+<div class="flex flex-col gap-space-md">
+<!-- Item 1 -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between font-mono-data text-body-sm">
+<span class="text-on-surface font-medium flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                PET & HDPE Polymer Containers
+              </span>
+<span class="text-on-surface font-bold">65% <span class="text-outline font-normal">(∼312 kg)</span></span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 65%;"></div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between font-mono-data text-body-sm">
+<span class="text-on-surface font-medium flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                Ghost Fishing Nets & Synthetic Rigging
+              </span>
+<span class="text-on-surface font-bold">25% <span class="text-outline font-normal">(∼120 kg)</span></span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-secondary h-full rounded-full" style="width: 25%;"></div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between font-mono-data text-body-sm">
+<span class="text-on-surface font-medium flex items-center gap-space-xs">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+                Expanded Polystyrene & Foam Fragments
+              </span>
+<span class="text-on-surface font-bold">10% <span class="text-outline font-normal">(∼48 kg)</span></span>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-outline h-full rounded-full" style="width: 10%;"></div>
+</div>
+</div>
+</div>
+<!-- Sub-Pills for Environmental State -->
+<div class="flex flex-wrap gap-space-xs pt-space-xs">
+<div class="bg-surface-container px-space-sm py-1 rounded-md flex items-center gap-space-xs font-mono-data text-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px] text-outline">history</span>
+<span>Degradation: Moderate (Class 2)</span>
+</div>
+<div class="bg-surface-container px-space-sm py-1 rounded-md flex items-center gap-space-xs font-mono-data text-body-sm text-secondary">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+<span>Entanglement Risk: High</span>
+</div>
+<div class="bg-surface-container px-space-sm py-1 rounded-md flex items-center gap-space-xs font-mono-data text-body-sm text-primary">
+<span class="material-symbols-outlined text-[14px]">recycling</span>
+<span>Recyclability: 88%</span>
+</div>
+</div>
+</div>
+<!-- Widget 3: Bottom Primary Action Panel -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-lg flex flex-col gap-space-md relative overflow-hidden">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">alt_route</span>
+<span class="font-label-caps text-label-caps uppercase text-on-surface-variant tracking-wider">Trajectory Planner</span>
+</div>
+<span class="bg-primary/20 text-primary text-label-caps font-mono-data px-2 py-0.5 rounded-full font-semibold">AI MODEL V4.2</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+          Autonomous route engine calculated optimal marine intercept factoring Black Sea current vectors and tidal drift.
+        </p>
+<!-- Primary Action Button with Glow -->
+<button class="relative group w-full bg-primary-container hover:bg-primary transition-all duration-200 text-on-primary-container px-space-xl py-space-md rounded-xl font-headline-md text-body-lg font-bold flex items-center justify-between shadow-lg shadow-primary/20" id="btnGenerateRoute">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[22px]">route</span>
+<span>Deploy Green Route</span>
+</div>
+<div class="bg-on-primary-container/20 px-space-sm py-0.5 rounded font-mono-data text-body-sm text-on-primary-container font-semibold">
+            +38% Fuel Cut
+          </div>
+</button>
+<!-- Secondary Utility Actions -->
+<div class="grid grid-cols-2 gap-space-sm">
+<button class="bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface font-body-md text-body-md py-space-sm px-space-md rounded-xl flex items-center justify-center gap-space-xs">
+<span class="material-symbols-outlined text-[18px]">flight_takeoff</span>
+<span>Deploy UAV Recon</span>
+</button>
+<button class="bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface font-body-md text-body-md py-space-sm px-space-md rounded-xl flex items-center justify-center gap-space-xs">
+<span class="material-symbols-outlined text-[18px]">file_download</span>
+<span>Export GeoJSON</span>
+</button>
+</div>
+<div class="flex items-center justify-center gap-space-xs font-mono-data text-body-sm text-outline text-center pt-space-xs">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>Municipal Autopilot Encryption • FIPS 140-3 Compliant</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Real-time Municipal Fleet Table (Below Map Split) -->
+<div class="bg-surface-container-low rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[22px]">dns</span>
+<h3 class="font-headline-md text-headline-md text-on-surface font-semibold">Black Sea Flotilla Asset Registry</h3>
+<span class="bg-surface-container text-on-surface-variant font-mono-data text-label-caps px-2 py-0.5 rounded-full">3 Vessels Active</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<input class="bg-surface-container border-0 rounded-lg px-space-md py-space-xs font-body-md text-body-md text-on-surface placeholder-outline focus:ring-1 focus:ring-primary w-64" placeholder="Filter vessel ID or sector..." type="text"/>
+</div>
+</div>
+<!-- Data Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left font-body-md text-body-md">
+<thead>
+<tr class="text-outline uppercase font-label-caps text-label-caps">
+<th class="py-space-sm px-space-md">Vessel Identification</th>
+<th class="py-space-sm px-space-md">Mission Target</th>
+<th class="py-space-sm px-space-md">Propulsion / Battery</th>
+<th class="py-space-sm px-space-md">Yield Extracted</th>
+<th class="py-space-sm px-space-md">Route Efficiency</th>
+<th class="py-space-sm px-space-md text-right">Autonomous State</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<tr class="hover:bg-surface-container/40 transition-colors">
+<td class="py-space-md px-space-md flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-headline-md text-body-md font-bold text-on-surface">USV Alpha-01</span>
+<span class="text-outline text-body-sm font-mono-data">MMSI: 271049101</span>
+</td>
+<td class="py-space-md px-space-md text-on-surface">
+<span class="font-mono-data text-secondary font-medium">Sürmene Hotspot (Waypoint #04)</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm font-mono-data text-body-sm">
+<span class="text-primary font-bold">92%</span>
+<div class="w-16 bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[92%]"></div>
+</div>
+<span class="text-outline">Solar Hybrid</span>
+</div>
+</td>
+<td class="py-space-md px-space-md font-mono-data text-on-surface font-semibold">
+              340 kg <span class="text-outline text-body-sm font-normal">/ 500 kg Cap</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="bg-primary/10 text-primary font-mono-data text-body-sm px-space-sm py-0.5 rounded-md font-semibold">98.2% Optimal</span>
+</td>
+<td class="py-space-md px-space-md text-right font-mono-data text-body-sm">
+<span class="inline-flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]">smart_toy</span>
+                AUTONOMOUS HARVEST
+              </span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container/40 transition-colors">
+<td class="py-space-md px-space-md flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="font-headline-md text-body-md font-bold text-on-surface">USV Beta-02</span>
+<span class="text-outline text-body-sm font-mono-data">MMSI: 271049102</span>
+</td>
+<td class="py-space-md px-space-md text-on-surface">
+<span class="font-mono-data text-on-surface-variant">Akçaabat Bay Cleanup</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm font-mono-data text-body-sm">
+<span class="text-primary font-bold">78%</span>
+<div class="w-16 bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[78%]"></div>
+</div>
+<span class="text-outline">Battery</span>
+</div>
+</td>
+<td class="py-space-md px-space-md font-mono-data text-on-surface font-semibold">
+              190 kg <span class="text-outline text-body-sm font-normal">/ 500 kg Cap</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="bg-primary/10 text-primary font-mono-data text-body-sm px-space-sm py-0.5 rounded-md font-semibold">94.0% Optimal</span>
+</td>
+<td class="py-space-md px-space-md text-right font-mono-data text-body-sm">
+<span class="inline-flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]">sensors</span>
+                SCANNING CORRIDOR
+              </span>
+</td>
+</tr>
+<tr class="hover:bg-surface-container/40 transition-colors">
+<td class="py-space-md px-space-md flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="font-headline-md text-body-md font-bold text-on-surface">USV Gamma-03</span>
+<span class="text-outline text-body-sm font-mono-data">MMSI: 271049103</span>
+</td>
+<td class="py-space-md px-space-md text-on-surface">
+<span class="font-mono-data text-on-surface-variant">Yomra Spit Intercept</span>
+</td>
+<td class="py-space-md px-space-md">
+<div class="flex items-center gap-space-sm font-mono-data text-body-sm">
+<span class="text-primary font-bold">85%</span>
+<div class="w-16 bg-surface-container h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[85%]"></div>
+</div>
+<span class="text-outline">Electric Direct</span>
+</div>
+</td>
+<td class="py-space-md px-space-md font-mono-data text-on-surface font-semibold">
+              210 kg <span class="text-outline text-body-sm font-normal">/ 500 kg Cap</span>
+</td>
+<td class="py-space-md px-space-md">
+<span class="bg-primary/10 text-primary font-mono-data text-body-sm px-space-sm py-0.5 rounded-md font-semibold">96.8% Optimal</span>
+</td>
+<td class="py-space-md px-space-md text-right font-mono-data text-body-sm">
+<span class="inline-flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[16px]">navigation</span>
+                RETURNING TO DOCK
+              </span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<script>
+  // Dynamic feedback on Green Route execution
+  document.getElementById('btnGenerateRoute')?.addEventListener('click', function() {
+    const btn = this;
+    const originalText = btn.innerHTML;
+    btn.classList.add('opacity-80');
+    btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">sync</span><span>Recalculating Hydro-Vectors...</span>';
+    
+    setTimeout(() => {
+      btn.classList.remove('opacity-80');
+      btn.innerHTML = '<div class="flex items-center gap-2"><span class="material-symbols-outlined text-[20px] text-on-primary-container">check_circle</span><span>Route Transmitted to USV Flotilla</span></div><div class="bg-on-primary-container/20 px-2 py-0.5 rounded font-mono-data text-body-sm text-on-primary-container font-semibold">Active</div>';
+      setTimeout(() => {
+        btn.innerHTML = originalText;
+      }, 4000);
+    }, 900);
+  });
+</script></main></div></body></html>
