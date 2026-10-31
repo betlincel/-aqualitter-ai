@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AquaLitter · Vatandaş bildirimi</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+<main>
+  <header><span class="tag">AquaLitter · Vatandaş prototipi</span><h1>Kıyı atığını bildir</h1>
+    <p>Bir fotoğraf ekleyin, konumunuzu seçip onaylayın. Bildirim ekip incelemesine gönderilir.</p></header>
+  <div id="setup" role="status">Gönderim yapılandırması kontrol ediliyor…</div>
+  <section aria-labelledby="location-heading">
+    <h2 id="location-heading">1 · Konumu seç ve onayla</h2>
+    <p>GPS doğruluğu garanti değildir. Düğme tarayıcınızın konum iznini ister; izin daha önce verilmiş veya reddedilmişse tarayıcı yeniden sormayabilir.</p>
+    <p class="muted">Telefon/QR kullanımı için HTTPS gerekir. HTTP localhost yalnızca yerel geliştirme içindir. Konum başka bir noktaya veya denize taşınmaz.</p>
+    <div class="actions"><button id="gps" type="button">Konumumu kullan</button>
+      <button id="manual" type="button" class="secondary">Haritadan nokta seç</button></div>
+    <p id="location-status" role="status" aria-live="polite">Konum seçilmedi. Haritanın Trabzon görünümü bildirim konumu değildir.</p>
+    <div id="map" tabindex="0" aria-label="Konum seçmek için haritaya tıklayın"></div>
+    <p id="map-error" role="alert" hidden>Harita yüklenemedi. İnternet bağlantısını ve Leaflet erişimini kontrol edin; konum onaylanmadan gönderim yapılamaz.</p>
+    <dl id="coordinates" hidden><dt>Enlem / Boylam</dt><dd id="latlng"></dd>
+      <dt>Konum kaynağı</dt><dd id="source"></dd><dt>Yaklaşık doğruluk yarıçapı</dt><dd id="accuracy"></dd>
+      <dt id="time-label">Konum zamanı (UTC)</dt><dd id="captured"></dd></dl>
+    <label id="accuracy-warning" hidden><input type="checkbox" id="accuracy-ack"> GPS belirsizliği 100 metreden büyük. Haritadaki çemberi kontrol ettim ve bu belirsizliği kabul ediyorum.</label>
+    <button id="confirm" type="button" disabled>Haritadaki konumu onaylıyorum</button>
+    <p id="confirmed" aria-live="polite"></p>
+  </section>
+  <section><h2>2 · Fotoğraf ve not</h2>
+    <label for="photo">Atık fotoğrafı · JPEG, PNG veya WebP (en fazla 5 MiB / 20 MP)</label>
+    <input id="photo" type="file" accept="image/jpeg,image/png,image/webp">
+    <label for="note">Kısa not (isteğe bağlı, en fazla 1000 karakter)</label>
+    <textarea id="note" rows="3" maxlength="1000" placeholder="Ne gördünüz? Erişimle ilgili bir ayrıntı var mı?"></textarea>
+    <p class="muted">Gönder düğmesi, seçtiğiniz fotoğrafı, notu ve onayladığınız konum/zaman/doğruluk bilgisini inceleme için Supabase'e iletir. Otomatik atık tespiti yapılmaz.</p>
+    <button id="submit" type="button" disabled>Bildirimi incelemeye gönder</button>
+    <p id="submit-status" role="status" aria-live="polite"></p>
+    <button id="new-report" type="button" class="secondary" hidden>Yeni bildirim</button>
+  </section>
+  <footer>Fotoğraflar ve bildirimler herkese açık listelenmez. Başlangıç durumu: pending_review · İnceleme bekliyor.<br>
+    Harita: Leaflet / OpenStreetMap. GPS tarayıcıdan gelir; konumun gerçekliği veya kesinliği doğrulanmaz.</footer>
+</main>
+</body></html>

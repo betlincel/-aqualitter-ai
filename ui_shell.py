@@ -3,7 +3,7 @@
 import html
 import streamlit as st
 
-PAGES = ("Genel Bakış", "Görüntü Analizi", "Gözlem Haritası", "Temizlik Rotası", "Çevresel Etki")
+PAGES = ("Genel Bakış", "Görüntü Analizi", "Gözlem Haritası", "Temizlik Rotası", "Çevresel Etki", "Vatandaş Bildirimleri")
 
 STYLE = """
 <style>

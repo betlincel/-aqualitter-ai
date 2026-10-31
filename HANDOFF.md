@@ -2,6 +2,41 @@
 
 Görüntü analizi, kullanıcı incelemesi, konum/gözlem kayıtları, gerçek Natural Earth maskesiyle denetlenen altı noktalı deniz rota demosu ve tahmini yakıt/egzoz CO₂ hesabı mevcut. Son değişiklik, `design/stitch` görsel referansının **beş bölümlü yerel Streamlit arayüzüne uyarlanmasıdır**. Rota algoritması, kara denetimi ve 1 km tampon korunmuştur.
 
+## Ayrı vatandaş GPS prototipi — feature/citizen-gps-reports
+
+Bu çalışma teslim commit'i `5f18592` üzerinden açılan **feature/citizen-gps-reports** dalındadır. Aşağıdaki vatandaş prototipi dosyaları ve yönetici menüsü değişiklikleri commit/push edilmeden çalışma ağacında bırakılır. `kahveotagii` teslimindeki görüntü analizi, hesap modülleri, rota algoritması ve yerel kullanıcı gözlem dosyası değiştirilmemiştir.
+
+- `citizen_app.py`: Ayrı standart Python HTTP sunucusu, varsayılan localhost:8502. `/api/config` sadece hazır/kurulum durumunu, `/api/reports` yalnızca gönderimi işler. Kimlik bilgisi, payload veya koordinat loglamaz; CORS açmaz; aynı origin JSON, gövde boyutu ve zaman aşımı denetimleri uygular. HTTPS ters proxy arkasından üst düzey sayfa olarak açılmalıdır.
+- `citizen_reports.py`: Yerel `.streamlit/secrets.toml` okur; yalnızca publishable veya JWT rolü `anon` olan anahtarı kabul eder, service/secret anahtarı kullanmaz veya dosyaya yazmaz. Ayarlar istemciye gönderilmez. Konum/onay/zaman/not/fotoğraf doğrulaması, bellek içinde EXIF'siz JPEG hazırlama, yeni Storage nesnesi ve `return=minimal` ile `pending_review` metadata INSERT'i yapar. Fotoğraflar yerel diske yazılmaz.
+- `citizen_web/`: Düz HTML/CSS/JS + Leaflet. Otomatik GPS çağrısı yok; **Konumumu kullan** düğmesi tarayıcı iznini tetikler. Konum geçici işaretçi/çember ve enlem-boylam/doğruluk/zamanla gösterilir, kullanıcı onaylar. GPS düşük doğruluk (100 m üzeri) için ek kabul gerekir. İzin reddi/hata/timeout sonrası harita seçimi sunulur; manuel seçim doğruluğu `null` ve zamanı seçim anıdır. Yeni seçim önceki onayı sıfırlar; koordinat taşınmaz/denize snap edilmez. GPS ve HTTPS sınırlamaları ekranda görünür.
+- `supabase/schema.sql`: Yeni tablo, özel bucket, anonim yalnızca INSERT ve `pending_review` politikası; halka açık okuma/listeleme, güncelleme ve silme yok. Storage restrictive guard kuralları başka geniş politikaların bu bucket'ı açmasını önler. Mevcut citizen_reports tablosu varsa transaction durur; DROP/temizleme yapmayın. `check_access.sql` salt okunur kurulum kontrolüdür.
+- `tests/test_citizen_reports.py`, `tests/citizen_gps.test.js`: Sunucu/config/transport ve kontrollü GPS/DOM/Leaflet bağlama testleri. Gerçek telefon veya canlı Supabase doğrulaması değildir.
+
+### Kullanıcının yapacağı manuel adım
+
+Yerel anonim Supabase yapılandırması bulundu; gerçek değerler terminale veya bu belgelere yazılmadı. Dashboard → SQL Editor'da önce **supabase/schema.sql**, sonra **supabase/check_access.sql** çalıştırın. Sonuçlarda RLS=true, can_submit=true, listele/güncelle/sil=false ve bucket public=false beklenir. Ardından kendi fotoğrafınızla tek bir gerçek gönderim yapıp Dashboard'da özel fotoğraf ve `pending_review` metadata kaydını doğrulayın. Bu canlı SQL/RLS/yükleme adımı henüz yapılmadı.
+
+```powershell
+.\.venv\Scripts\python.exe citizen_app.py --host 127.0.0.1 --port 8502
+```
+
+Üretim yolunda `citizen_app.py` Supabase URL ve anonim/publishable anahtarı yalnızca
+`SUPABASE_URL`, `SUPABASE_ANON_KEY` veya `SUPABASE_PUBLISHABLE_KEY` ortam değişkenlerinden
+okur; Streamlit secrets dosyasını ve service-role anahtarını kullanmaz. Platform portu
+`PORT` ile verilebilir; örnek: `\.venv\Scripts\python.exe citizen_app.py --host 0.0.0.0`.
+
+QR içine bu ayrı sunucuya yönlenen, sayfa ve `/api/*` uçları aynı origin altında olan HTTPS URL'sini koyun. Proxy `Host` başlığını korumalı, `Permissions-Policy` geolocation'ı engellememelidir; iframe kullanmayın. Telefonda bilgisayarın localhost'u açılamaz, LAN HTTP üzerinden GPS beklenmemelidir. HTTPS yayın/tünel ve QR üretimi otomatik kurulmadı. Yapılandırma yoksa sayfa kurulum mesajıyla gönderimi kapatır. Ana uygulama ayrı olarak 8501'de çalışır.
+
+32 Python testi (mevcut 22 + yeni 10), 8 Node kontrollü GPS/DOM testi ve mevcut rota/yakıt/gezinme AppTest scriptleri geçti. Rota 64,37911378355338 / 39,22031396657271 km olarak kaldı. Kullanıcı kayıt SHA256 özeti teslim başlangıcındaki `480c1345c5625b361a9dab892e0063e91f9db1aa4574ac64ff81ed1d6d014971` ile aynı. `node --test` bu komut ortamında child-process EPERM verdi; aynı testler alt süreç açmadan `node tests/citizen_gps.test.js` ile geçti. Başarılı kontroller gereksiz tekrarlanmadı.
+
+Sınırlar: Supabase Storage ve metadata INSERT'i atomik değildir. Fotoğraf yüklenip kayıt başarısızsa sahte başarı verilmez; referans kimliğiyle yönetici kontrolü istenir, yetim fotoğrafı yönetici temizler. Anonim silme veya ayrıcalıklı anahtar açılmaz. Kamuya açılmadan önce oran/kötüye kullanım kontrolü gerekir; konum sahteciliği ve GPS doğruluğu garanti edilemez. Ana uygulamaya otomatik aktarım/moderasyon arayüzü kapsamda yoktur.
+
+### Sonraki kontrollü genişletme — yönetici vatandaş bildirimleri
+
+Bu dalda `citizen_admin.py` ve `app.py` içindeki **Vatandaş Bildirimleri** bölümü eklendi. Sunucu tarafı yönetici anahtarıyla `pending_review` kayıtlarını ve özel bucket fotoğraflarını okur; **Görüntü analizine aktar** düğmesi fotoğrafı mevcut Streamlit oturumuna geçirir. Ana yerel gözlem dosyasına otomatik kopyalama, konum taşıma veya denize snap yapılmaz. `[supabase] url` ve `SUPABASE_SERVICE_ROLE_KEY` yoksa bölüm açık kurulum mesajı verir. Yönetici anahtarı yalnız Streamlit sürecinde kalır.
+
+Vatandaş Leaflet döşemesi API anahtarı istemeyen CARTO basemap'ine ve OSM/CARTO attribution'ına geçirildi. `tileerror` durumunda yalnız uyarı gösterilir; GPS ve manuel nokta seçimi çalışmaya devam eder. Tarayıcıdaki gerçek `pending_review` kaydının yönetici bölümünde görünmesi, bu çalışma ortamında service-role anahtarı olmadığı için canlı olarak tekrar edilmedi; Dashboard'da yalnızca sunucu yöneticisi anahtarını ekledikten sonra **Vatandaş Bildirimleri → Pending bildirimleri yenile** ile kontrol edin.
+
 ## Çalıştırma
 
 ```powershell

@@ -44,6 +44,7 @@ from marine_routes import (
     compare_visit_orders,
     repeated_edge_passes,
 )
+from citizen_admin import CitizenAdminError, fetch_pending_reports, fetch_photo, load_admin_config
 
 
 MODEL_ID = "IDEA-Research/grounding-dino-tiny"
@@ -1762,6 +1763,90 @@ def render_overview_page():
         st.button("Fotoğraf analizine başla", key='overview_analysis', on_click=go_to, args=(PAGES[1],), width='stretch')
 
 
+def transfer_citizen_photo_to_analysis(photo, report_id):
+    """Queue the citizen photo and navigate during the next Streamlit rerun.
+
+    This runs as a button callback, before the page body is rebuilt, so the
+    `active_page` radio widget is not mutated after it has been instantiated.
+    """
+    st.session_state["active_photo"] = {
+        "name": f"citizen-{report_id}.jpg", "bytes": photo,
+    }
+    go_to(PAGES[1])
+
+
+def render_citizen_reports_page():
+    """Server-side review surface for anonymous citizen submissions.
+
+    The privileged read key, when configured, stays in this Streamlit process;
+    it is never put in widget state, HTML, logs, or the citizen application.
+    """
+    st.caption("Anonim vatandaş bildirimleri · yönetici incelemesi")
+    st.info(
+        "Bu liste yalnızca Supabase'ten gelen pending_review kayıtlarını gösterir. "
+        "Vatandaş koordinatı otomatik olarak değiştirilmez veya denize taşınmaz."
+    )
+    try:
+        config = load_admin_config(st.secrets)
+    except CitizenAdminError as error:
+        st.warning(str(error))
+        st.caption("Gerekli ayar: .streamlit/secrets.toml içinde [supabase] altında url ve "
+                   "SUPABASE_SERVICE_ROLE_KEY. Anahtar yalnızca sunucuda okunur.")
+        return
+
+    if st.button("Pending bildirimleri yenile", key="citizen_refresh"):
+        st.rerun()
+    try:
+        reports = fetch_pending_reports(config)
+    except CitizenAdminError as error:
+        st.error(str(error))
+        return
+    if not reports:
+        st.success("İnceleme bekleyen vatandaş bildirimi bulunmuyor.")
+        return
+
+    st.write(f"İnceleme bekleyen kayıt: **{len(reports)}**")
+    points = []
+    for report in reports:
+        points.append((report["latitude"], report["longitude"], report["id"]))
+    map_obj = folium.Map(location=TRABZON_CENTER, zoom_start=11, tiles="CartoDB positron",
+                         control_scale=True, attr="© OpenStreetMap contributors © CARTO")
+    for lat, lon, report_id in points:
+        folium.Marker([lat, lon], tooltip=f"Vatandaş bildirimi · {report_id[:8]}").add_to(map_obj)
+    try:
+        st_folium(map_obj, key="citizen_reports_map", height=430, use_container_width=True, returned_objects=[])
+    except Exception as error:
+        st.warning(f"Vatandaş bildirim haritası gösterilemedi; kayıt ayrıntıları kullanılabilir: {type(error).__name__}")
+
+    for index, report in enumerate(reports):
+        title = f"{report['captured_at']} · {report['location_source']} · {report['status']}"
+        with st.expander(title, expanded=index == 0):
+            left, right = st.columns([1, 2], gap="large")
+            photo = None
+            with left:
+                try:
+                    photo = fetch_photo(config, report["photo_path"])
+                    st.image(photo, caption="Vatandaş fotoğrafı", width="stretch")
+                    st.button(
+                        "Görüntü analizine aktar",
+                        key=f"citizen_analyze_{report['id']}",
+                        on_click=transfer_citizen_photo_to_analysis,
+                        args=(photo, report["id"]),
+                    )
+                except CitizenAdminError as error:
+                    st.warning(str(error))
+            with right:
+                st.write(f"**Kayıt:** `{report['id']}`")
+                st.write(f"**Konum:** {report['latitude']:.6f}, {report['longitude']:.6f}")
+                accuracy = "Bilinmiyor (manuel seçim)" if report["accuracy_m"] is None else f"{report['accuracy_m']:.1f} m"
+                st.write(f"**GPS doğruluğu:** {accuracy} · garanti değildir")
+                st.write(f"**Konum kaynağı:** {report['location_source']}")
+                st.write(f"**Alınan zaman:** {report['captured_at']}")
+                st.write(f"**Durum:** {report['status']}")
+                st.write(f"**Not:** {report['note'] or 'Not yok'}")
+                st.caption("Fotoğraf, mevcut insan inceleme/görüntü analizi akışına aktarılmak üzere burada doğrulanır; bu prototip vatandaş kaydını yerel gözlem dosyasına otomatik eklemez.")
+
+
 st.set_page_config(page_title='AquaLitter | Kıyı gözlem ve temizlik planı', page_icon='🌊', layout='wide')
 preserve_ui_values()
 page = shell()
@@ -1771,4 +1856,5 @@ page = shell()
     PAGES[2]: render_observation_page,
     PAGES[3]: render_route_page,
     PAGES[4]: render_environment_page,
+    PAGES[5]: render_citizen_reports_page,
 }[page]()

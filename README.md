@@ -197,3 +197,66 @@ Otomatik doğrulama (30 Ekim 2026): beş hesap testi ile km/deniz mili, litre ve
 .\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_fuel_estimates.py"
 .\.venv\Scripts\python.exe tests\verify_fuel_streamlit.py
 ```
+
+## Vatandaş GPS bildirim prototipi — ayrı feature dalı
+
+`feature/citizen-gps-reports`, `5f18592` teslim sürümünden ayrılmıştır. Mevcut görüntü analizi, gözlem kayıtları, rota algoritması, yakıt/CO₂ ve Genel Bakış akışları korunur; yalnız ayrı vatandaş sayfası ve yönetici **Vatandaş Bildirimleri** bölümü eklenmiştir. Vatandaş sayfası ayrı `citizen_app.py` sunucusu ile `citizen_web/` altındaki düz HTML/JavaScript/Leaflet dosyalarıdır; yeni frontend çatısı veya Python bağımlılığı gerektirmez. Bildirimler ana uygulamanın yerel gözlem dosyasına/haritasına otomatik eklenmez.
+
+### Çalıştırma ve QR adresi
+
+Ana uygulamayı çalıştırdığınız ortamdan ayrı bir PowerShell açın:
+
+```powershell
+.\.venv\Scripts\python.exe citizen_app.py --host 127.0.0.1 --port 8502
+```
+
+Üretim/ters proxy çalıştırmasında vatandaş sunucusu Supabase ayarlarını yalnızca
+sunucu ortam değişkenlerinden okur; `.streamlit/secrets.toml` bu süreçte kullanılmaz:
+
+```powershell
+$env:SUPABASE_URL = "https://<proje>.supabase.co"
+$env:SUPABASE_ANON_KEY = "<anon-veya-publishable-key>"
+$env:PORT = "8502"
+\.venv\Scripts\python.exe citizen_app.py --host 0.0.0.0
+```
+
+`SUPABASE_ANON_KEY`/`SUPABASE_PUBLISHABLE_KEY` yalnız anonim veya publishable anahtar olabilir; service-role/secret anahtarları vatandaş sunucusu reddeder. `PORT` platformun verdiği portu belirler. HTTPS ters proxy TLS'yi sonlandırıp aynı origin altında `/` ve `/api/*` yollarını iletmelidir.
+
+Yerel sayfa: `http://localhost:8502/`. Ana Streamlit uygulaması kendi 8501 portunda kalır. Telefonun `localhost` adresi bilgisayarınız değildir. QR kod içine, bu vatandaş sunucusuna yönlenen **herkese erişilebilir HTTPS adresini** koyun; örneğin kendi alan adınızdaki vatandaş sayfasının tam URL'si. HTTPS ters proxy aynı origin altında hem sayfayı hem `/api/*` isteklerini iletmeli, özgün `Host` başlığını korumalı ve geolocation iznini engellememelidir. QR'ı doğrudan vatandaş sayfasına açın; iframe içine gömmeyin. Yayın/tünel kurulumu bu prototip tarafından otomatik yapılmaz. Harita için Leaflet CDN ve OpenStreetMap döşemelerine internet erişimi gerekir.
+
+[Geolocation API](https://developer.mozilla.org/en-US/docs/Web/API/Geolocation/getCurrentPosition) HTTPS/güvenli bağlam ve kullanıcı izni ister; HTTP localhost geliştirme istisnasıdır. Yerel ağ IP'siyle HTTP açmak GPS için yeterli değildir. Sayfa açılırken konum istenmez. **Konumumu kullan** tıklamasında tarayıcının `getCurrentPosition` çağrısı yapılır; daha önce verilmiş/reddedilmiş izin nedeniyle tarayıcı tekrar sormayabilir. Konum GPS, Wi-Fi veya başka tarayıcı kaynaklarından gelebilir; uydu GPS'i veya doğruluğu garanti edilmez.
+
+İzin verilirse enlem, boylam, metre cinsinden doğruluk ve tarayıcının ölçüm zamanı alınır; geçici Leaflet işaretçisi ve doğruluk çemberi gösterilir. **Haritadaki konumu onaylıyorum** tıklanmadan gönderim açılamaz. 100 m üzerindeki doğruluk yarıçapı ek kullanıcı kabulü gerektirir; bu eşik yalnızca prototip uyarısıdır. İzin reddi, destek eksikliği ve zaman aşımı ayrı açıklanır; **Haritadan nokta seç** alternatifi kullanılabilir. Manuel seçimde `accuracy_m = null`, `location_source = manual_map`; zaman alanı manuel seçim anıdır. GPS'te `location_source = browser_geolocation`; `captured_at` konum ölçüm zamanıdır, fotoğraf çekim zamanı değildir. İkinci tıklama veya yeni GPS isteği onayı sıfırlar. Geç gelen GPS yanıtı daha sonraki manuel seçimi ezmez. Koordinatlar çalışma bölgesine/denize taşınmaz veya yuvarlanarak kaydedilmez.
+
+### Manuel Supabase kurulumu
+
+1. Mevcut yerel `.streamlit/secrets.toml` sunucu tarafından `tomllib` ile okunur. Desteklenen biçim `[supabase]` bölümünde `url` ve `anon_key` veya `publishable_key` alanlarıdır; üst düzey `SUPABASE_URL` ve `SUPABASE_ANON_KEY` / `SUPABASE_PUBLISHABLE_KEY` de desteklenir. URL proje HTTPS kökü veya bilinen `/rest/v1`, `/storage/v1`, `/auth/v1` uçlarından biri olabilir; sunucu çevresel boşlukları temizleyip proje kökünü kullanır. Gerçek değerleri Git'e, HTML/JS'ye veya terminale yazmayın. Bu çalışma sırasında yerel dosya değiştirilmedi; kullanılabilir anonim yapılandırma bulundu. Eksik/bozuk yapılandırmada sayfa açık kurulum mesajı gösterir ve gönderimi kapalı tutar.
+2. Supabase Dashboard → **SQL Editor** içinde [supabase/schema.sql](supabase/schema.sql) dosyasını proje sahibi olarak çalıştırın. Dosya yeni `citizen_reports` tablosu ve özel `citizen-reports` bucket'ını oluşturur. Tablo zaten varsa işlem açıkça hata verip transaction'ı geri alır; kullanıcı verisini silerek tekrar çalıştırmayın, mevcut şemayı inceleyin.
+3. [supabase/check_access.sql](supabase/check_access.sql) salt okunur kontrolünü çalıştırın: RLS etkin/zorunlu, `can_submit=true`, `can_list/can_update/can_delete=false`, bucket `public=false` olmalı. Storage politikalarındaki `*_guard` kuralları `RESTRICTIVE` olmalıdır. Bunlar mevcut geniş Storage politikalarının bu bucket'a okuma/listeleme/güncelleme/silme izni vermesini de engeller; başka bucket'ların kuralları korunur.
+4. Ardından vatandaş sayfasında kendi test fotoğrafınızla bir bildirim gönderin. Dashboard'da özel bucket içindeki `<uuid>/photo.jpg` ve aynı kimlikli metadata kaydını kontrol edin. Durum `pending_review` olmalı; koordinatlar onaylanan konumla, doğruluk/zaman/kaynak seçilen yöntemle eşleşmeli. Bu canlı adım henüz yapılmadı.
+
+Şema anonim rolüne yalnızca belirtilen metadata sütunlarında **INSERT** verir. Başlangıç durumu `pending_review` ile sınırlandırılır; anonim listeleme/okuma, değiştirme ve silme izni yoktur. Storage yalnızca yeni UUID klasöründeki `photo.jpg` yüklemesini kabul eder; upsert kapalıdır, bucket özeldir, limit 5 MiB/JPEG'dir. [Supabase Storage RLS](https://supabase.com/docs/guides/storage/security/access-control) ve [API anahtarları](https://supabase.com/docs/guides/getting-started/api-keys) esas alınmıştır. Sunucu yalnızca anonim/publishable anahtar kullanır; `service_role`/secret anahtara geri düşmez. `/api/config` yalnızca hazır/eksik durumunu döndürür; URL ve anahtarlar istemciye verilmez.
+
+Gönderim, aynı origin JSON isteğiyle ayrı Python sunucusuna gelir. Fotoğraf bellek içinde doğrulanır (JPEG/PNG/WebP, en fazla 5 MiB / 20 MP), yönü düzeltilir, en fazla 2048×2048 JPEG'e çevrilip EXIF'i kaldırılır; diske kaydedilmez. Önce özel Storage'a yüklenir, sonra fotoğraf yolu, not, `latitude`, `longitude`, `accuracy_m`, `captured_at`, `location_source`, `status` ve kimlik veritabanına yazılır. Metadata isteği `return=minimal` kullanır; bunun için SELECT politikası açılmaz.
+
+Storage ve veritabanı birlikte atomik değildir. Fotoğraf yüklenip metadata yazımı başarısızsa sayfa başarı bildirmez; referans kimliğiyle yönetici kontrolü ister. Anonim silme yetkisi açılmaz, yetim fotoğrafı yönetici Dashboard'dan inceleyip temizlemelidir. Otomatik tekrar denemesi yoktur. Anonim ekleme GPS gerçekliğini kanıtlamaz ve tek başına spam/kota koruması sağlamaz; kamusal dağıtım öncesi sunucu tarafı oran/kötüye kullanım kontrolü gerekir. Bu aşama bir prototiptir; moderasyon ekranı veya ana uygulamaya aktarım içermez.
+
+### Prototip kontrolleri
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+node tests/citizen_gps.test.js
+.\.venv\Scripts\python.exe tests\verify_demo_streamlit.py
+.\.venv\Scripts\python.exe tests\verify_fuel_streamlit.py
+.\.venv\Scripts\python.exe tests\verify_navigation_streamlit.py
+```
+
+32 Python testi (mevcut 22 dahil), 8 JavaScript testi ve mevcut üç tam Streamlit doğrulama akışı geçti. GPS başarı/izin reddi/zaman aşımı, düşük doğruluk kabulü, manuel/ikinci seçim, onay sıfırlama, geç GPS yanıtı, Leaflet işaretçi/çember bağlama, döşeme hatası sonrası manuel akış, eksik Supabase ayarı, görüntü/metadata doğrulaması, yükleme→INSERT sırası ve hata durumları kontrollü fixture/mock ile denendi. Python HTTP testleri gerçek yerel HTTP sunucusunu, Supabase istekleri ise sahte taşıma katmanını kullanır. Gerçek telefon GPS izni ve canlı Supabase SQL/RLS/yükleme henüz denenmedi; otomatik testler bunların geçtiği iddiası değildir. Mevcut rota mesafeleri ve kullanıcı kayıt dosyası değişmedi. Bu feature çalışması commit edilmez ve push yapılmaz.
+
+### Yönetici vatandaş bildirimleri
+
+Ana Streamlit uygulamasına eklenen **Vatandaş Bildirimleri** bölümü Supabase'ten yalnız `pending_review` kayıtlarını sunucu tarafında okur; fotoğraf, not, enlem-boylam, doğruluk, zaman, konum kaynağı ve durum aynı kayıtla gösterilir. `citizen_reports` şeması anonim listelemeyi kapattığı için yönetici okuması için `.streamlit/secrets.toml` içinde `[supabase]` altında `url` ve yalnız Streamlit sunucusunda kullanılacak `SUPABASE_SERVICE_ROLE_KEY` gerekir. Bu anahtar HTML/JavaScript/widget/loglara gönderilmez ve vatandaş sunucusunda kabul edilmez. Ayar yoksa diğer ana uygulama bölümleri çalışır, bu bölüm güvenli kurulum mesajı gösterir.
+
+Yönetici haritası kayıt koordinatlarını olduğu gibi kullanır; otomatik taşıma veya denize snap yoktur. Fotoğraf kartındaki **Görüntü analizine aktar** düğmesi fotoğraf baytlarını yalnız Streamlit oturumuna alıp mevcut analiz/insan inceleme sayfasına geçirir; yerel gözlem JSON'una otomatik yazılmaz ve vatandaş kaydı değiştirilmez.
+
+Vatandaş haritası anahtarsız CARTO döşemesini (`basemaps.cartocdn.com`) OpenStreetMap ve CARTO attribution'ı ile kullanır. Döşeme isteği başarısız olsa bile GPS koordinatı, geçici işaretçi durumu ve manuel harita seçimi kullanılabilir; sayfa hata ekranına yönlenmez. Gerçek kullanımda CARTO/Leaflet/OSM kullanım koşullarını ve trafik sınırlarını ayrıca kontrol edin.
