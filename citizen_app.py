@@ -30,7 +30,7 @@ class CitizenHandler(BaseHTTPRequestHandler):
         self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header('Permissions-Policy', 'geolocation=(self)')
         self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self' https://unpkg.com; "
-                         "style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://unpkg.com; "
+                         "style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: blob: https://server.arcgisonline.com https://tile.openstreetmap.de https://unpkg.com; "
                          "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
         self.end_headers()
         self.wfile.write(data)

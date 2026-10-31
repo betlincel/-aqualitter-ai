@@ -35,7 +35,7 @@ Sınırlar: Supabase Storage ve metadata INSERT'i atomik değildir. Fotoğraf y�
 
 Bu dalda `citizen_admin.py` ve `app.py` içindeki **Vatandaş Bildirimleri** bölümü eklendi. Sunucu tarafı yönetici anahtarıyla `pending_review` kayıtlarını ve özel bucket fotoğraflarını okur; **Görüntü analizine aktar** düğmesi fotoğrafı mevcut Streamlit oturumuna geçirir. Ana yerel gözlem dosyasına otomatik kopyalama, konum taşıma veya denize snap yapılmaz. `[supabase] url` ve `SUPABASE_SERVICE_ROLE_KEY` yoksa bölüm açık kurulum mesajı verir. Yönetici anahtarı yalnız Streamlit sürecinde kalır.
 
-Vatandaş Leaflet döşemesi API anahtarı istemeyen CARTO basemap'ine ve OSM/CARTO attribution'ına geçirildi. `tileerror` durumunda yalnız uyarı gösterilir; GPS ve manuel nokta seçimi çalışmaya devam eder. Tarayıcıdaki gerçek `pending_review` kaydının yönetici bölümünde görünmesi, bu çalışma ortamında service-role anahtarı olmadığı için canlı olarak tekrar edilmedi; Dashboard'da yalnızca sunucu yöneticisi anahtarını ekledikten sonra **Vatandaş Bildirimleri → Pending bildirimleri yenile** ile kontrol edin.
+Vatandaş Leaflet döşemesi API anahtarı istemeyen HTTPS Esri World Street Map'e ve Esri attribution'ına geçirildi; `tileerror` durumunda anahtarsız OpenStreetMap DE fallback'i denenir. Her iki kaynak başarısız olsa da GPS ve manuel nokta seçimi çalışmaya devam eder. Tarayıcıdaki gerçek `pending_review` kaydının yönetici bölümünde görünmesi, bu çalışma ortamında service-role anahtarı olmadığı için canlı olarak tekrar edilmedi; Dashboard'da yalnızca sunucu yöneticisi anahtarını ekledikten sonra **Vatandaş Bildirimleri → Pending bildirimleri yenile** ile kontrol edin.
 
 ## Çalıştırma
 

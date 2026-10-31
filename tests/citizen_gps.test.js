@@ -64,18 +64,18 @@ test('insecure contexts, unsupported browsers, thrown errors and invalid coordin
 });
 
 function fakePage() {
-  const elements = {}, markers = [], circles = []; let click, success, failure, calls = 0, tileError;
+  const elements = {}, markers = [], circles = [], tileUrls = [], tileHandlers = []; let click, success, failure, calls = 0;
   const element = id => elements[id] ||= {hidden:false,checked:false,disabled:false,textContent:'',files:[],
     events:{},addEventListener(event,handler){this.events[event]=handler;},focus(){}};
   const map = {setView(){return this;},on(event,handler){if(event==='click')click=handler;return this;}};
   const env = {document:{getElementById:element},isSecureContext:true,
     navigator:{geolocation:{getCurrentPosition(ok,fail){calls++; success=ok;failure=fail;}}},
     fetch:async()=>({json:async()=>({ready:true})}),
-    L:{map:()=>map,tileLayer:()=>({addTo(){return this;},on(event,handler){if(event==='tileerror') tileError=handler; return this;}}),
+    L:{map:()=>map,tileLayer:url=>{tileUrls.push(url); return {addTo(){return this;},on(event,handler){if(event==='tileerror') tileHandlers.push(handler); return this;}}},
       marker:coords=>{const marker={coords,removed:false,addTo(){return this;},bindPopup(){return this;},remove(){this.removed=true;}};markers.push(marker);return marker;},
       circle:(coords,options)=>{const circle={coords,options,removed:false,addTo(){return this;},remove(){this.removed=true;}};circles.push(circle);return circle;}}};
   return {env,element,markers,circles,mapClick:(lat,lng)=>click({latlng:{lat,lng}}),
-    tileFailure:()=>tileError(),
+    tileFailure:(index=0)=>tileHandlers[index](), tileUrls,
     gpsSuccess:value=>success(value),gpsFailure:value=>failure(value),calls:()=>calls};
 }
 
@@ -104,6 +104,9 @@ test('tile failure leaves the form usable and exposes a non-blocking warning', a
   const page = fakePage(); gps.init(page.env);
   await new Promise(resolve=>setImmediate(resolve));
   page.tileFailure();
+  assert.match(page.tileUrls[0], /server\.arcgisonline\.com/);
+  assert.match(page.tileUrls[1], /tile\.openstreetmap\.de/);
+  assert.ok(page.tileUrls.every(url => !url.includes('cartocdn')));
   assert.equal(page.element('map-error').hidden, false);
   page.mapClick(40.12345678,38.98765432);
   assert.equal(page.element('confirm').disabled, false);

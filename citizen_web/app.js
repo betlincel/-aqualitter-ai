@@ -63,16 +63,26 @@
     let lastCandidate = null;
     try {
       map = env.L.map('map').setView([41.045, 39.75], 11);
-      // CARTO's public basemap is API-key-free and includes the required OSM
-      // attribution. A tile error must never disable GPS or manual selection.
-      const tiles = env.L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {maxZoom:20,
-        subdomains:'abcd',
-        attribution:'&copy; OpenStreetMap contributors &copy; CARTO'}).addTo(map);
-      if (tiles && typeof tiles.on === 'function') tiles.on('tileerror', () => {
+      // Esri's public street basemap does not require an API key. If that
+      // service is unavailable, fall back to OSM DE; neither tile failure may
+      // disable GPS or manual selection.
+      let fallbackUsed = false;
+      const showTileWarning = () => {
         const warning = $('map-error');
         warning.hidden = false;
-        warning.textContent = 'Harita döşemeleri yüklenemedi. GPS koordinatı ve manuel nokta seçimi yine kullanılabilir; konum otomatik olarak taşınmaz.';
-      });
+        warning.textContent = 'Harita döşemeleri yüklenemedi veya yedek kaynağa geçildi. GPS koordinatı ve manuel nokta seçimi yine kullanılabilir; konum otomatik olarak taşınmaz.';
+      };
+      const fallbackTiles = () => {
+        if (fallbackUsed) return;
+        fallbackUsed = true;
+        showTileWarning();
+        const osm = env.L.tileLayer('https://tile.openstreetmap.de/{z}/{x}/{y}.png', {maxZoom:19,
+          attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+        if (osm && typeof osm.on === 'function') osm.on('tileerror', showTileWarning);
+      };
+      const tiles = env.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {maxZoom:19,
+        attribution:'Tiles &copy; Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'}).addTo(map);
+      if (tiles && typeof tiles.on === 'function') tiles.on('tileerror', fallbackTiles);
       map.on('click', e => { if (sending || submitted) return; selectManual(state, e.latlng.lat, e.latlng.lng); render(); });
     } catch (_) { $('map-error').hidden = false; }
     function render() {
