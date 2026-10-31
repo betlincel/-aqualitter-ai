@@ -71,6 +71,16 @@ PROMPT_LABELS = (
 PROMPT = ". ".join(PROMPT_LABELS) + "."
 NO_DETECTIONS = "Bu görüntüde modelin kapsamına giren atık tespit edilmedi"
 TRABZON_CENTER = (41.0053, 39.7267)
+ESRI_TILE_URL = (
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/"
+    "MapServer/tile/{z}/{y}/{x}"
+)
+ESRI_TILE_ATTRIBUTION = (
+    "Tiles &copy; Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, "
+    "Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+)
+OSM_DE_TILE_URL = "https://tile.openstreetmap.de/{z}/{x}/{y}.png"
+OSM_DE_ATTRIBUTION = "&copy; OpenStreetMap contributors"
 # These built-in records are illustrative scenarios, not model/photo observations.
 # Coordinates have one source so the observation map and route map cannot drift.
 SCENARIO_DEMO_RECORDS = [
@@ -441,17 +451,45 @@ def format_observation_popup(observation: dict) -> str:
     )
 
 
+def make_base_map(*, location=TRABZON_CENTER, zoom_start=11):
+    """Create a keyless Esri map with OSM DE tiles underneath as fallback.
+
+    Both layers are independent of application data. If Esri tiles are
+    blocked or unavailable, the OSM DE layer remains usable without a key.
+    """
+    map_view = folium.Map(
+        location=location,
+        zoom_start=zoom_start,
+        control_scale=True,
+        tiles=None,
+    )
+    # Add fallback first so the primary Esri layer can render above it; a
+    # failed primary request leaves the already available OSM layer visible.
+    folium.TileLayer(
+        tiles=OSM_DE_TILE_URL,
+        attr=OSM_DE_ATTRIBUTION,
+        name="OpenStreetMap DE (yedek)",
+        overlay=False,
+        control=False,
+        show=True,
+    ).add_to(map_view)
+    folium.TileLayer(
+        tiles=ESRI_TILE_URL,
+        attr=ESRI_TILE_ATTRIBUTION,
+        name="Esri World Street Map",
+        overlay=False,
+        control=False,
+        show=True,
+    ).add_to(map_view)
+    return map_view
+
+
 def make_observation_map(
     observations: list[dict],
     layer: str,
     selected_location: dict | None = None,
 ) -> folium.Map:
-    map_view = folium.Map(
-        location=TRABZON_CENTER,
-        zoom_start=11,
-        control_scale=True,
-        tiles="OpenStreetMap",
-    )
+    map_view = make_base_map()
     if layer in ("Tümü", "Gerçek gözlemler"):
         for observation in observations:
             location = observation.get("location")
@@ -530,12 +568,7 @@ def make_route_map(
     route: dict, stops_by_id: dict[str, dict], title: str, bounds: list | None = None
 ) -> folium.Map:
     """Render configured maritime polylines for one route comparison result."""
-    map_view = folium.Map(
-        location=TRABZON_CENTER,
-        zoom_start=11,
-        control_scale=True,
-        tiles="OpenStreetMap",
-    )
+    map_view = make_base_map()
     edge_passes = repeated_edge_passes(route["legs"])
     for leg_number, (leg, (edge_total, edge_pass)) in enumerate(
         zip(route["legs"], edge_passes), start=1
@@ -1809,8 +1842,7 @@ def render_citizen_reports_page():
     points = []
     for report in reports:
         points.append((report["latitude"], report["longitude"], report["id"]))
-    map_obj = folium.Map(location=TRABZON_CENTER, zoom_start=11, tiles="CartoDB positron",
-                         control_scale=True, attr="© OpenStreetMap contributors © CARTO")
+    map_obj = make_base_map()
     for lat, lon, report_id in points:
         folium.Marker([lat, lon], tooltip=f"Vatandaş bildirimi · {report_id[:8]}").add_to(map_obj)
     try:

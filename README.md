@@ -36,7 +36,7 @@ Onaylı tespitler tek fotoğraf başına tek gözlem kaydında gruplanır. Karar
 
 Harita Trabzon kıyılarına odaklanır. Kullanıcı kaydı `Gerçek gözlem` veya `Senaryo` olarak sınıflandırır; tarih girer ve konumu haritada tıklayarak ya da enlem-boylam yazarak belirtir. Koordinatlar aralık dışındaysa kaydetme reddedilir. Tarihin kaynağı kullanıcı girdisi, konum kaynağı ise `map_click` veya `manual_coordinates` olarak saklanır. Fotoğrafın piksel kutuları hiçbir aşamada coğrafi koordinat sayılmaz.
 
-Harita tıklama etkileşimi MIT lisanslı [streamlit-folium](https://github.com/randyzwitch/streamlit-folium) bileşenini kullanır; uygulama bağımlılığı `requirements.txt` içinde yer alır. Harita zeminindeki OpenStreetMap döşemeleri tarayıcıdan çevrim içi yüklenir.
+Harita tıklama etkileşimi MIT lisanslı [streamlit-folium](https://github.com/randyzwitch/streamlit-folium) bileşenini kullanır; uygulama bağımlılığı `requirements.txt` içinde yer alır. Harita zemini anahtarsız HTTPS Esri döşemesini, altında OpenStreetMap DE fallback katmanını kullanır; döşemeler tarayıcıdan çevrim içi yüklenir.
 
 Harita gerçek gözlemleri ve senaryo noktalarını katman seçimiyle ayırır. Turuncu sabit örnek noktaları yalnızca harita arayüzünü göstermek için kullanılan açık senaryo verisidir; gerçek kıyı gözlemi değildir. Nokta ayrıntısında onaylı nesne sayısı ve tür dağılımı yer alır; bunlar kg veya fiziksel yoğunluk ölçüsü değildir. Harita döşemelerinin görüntülenmesi için tarayıcıda internet erişimi gerekir.
 
