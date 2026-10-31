@@ -19,6 +19,9 @@ import folium
 from folium.plugins import PolyLineTextPath
 from PIL import Image, ImageDraw, ImageOps
 from streamlit_folium import st_folium
+from ui_shell import (
+    PAGES, preserve_ui_values, shell, go_to, context_badge, capture_upload, clear_photo,
+)
 from fuel_estimates import (
     DIESEL_KG_CO2_PER_LITER,
     EPA_SOURCE_DATE,
@@ -515,7 +518,16 @@ def make_observation_map(
     return map_view
 
 
-def make_route_map(route: dict, stops_by_id: dict[str, dict], title: str) -> folium.Map:
+def route_comparison_bounds(comparison: dict) -> list[list[float]]:
+    points = [point for prefix in ('current', 'recommended')
+              for leg in comparison[f'{prefix}_legs'] for point in leg['coordinates']]
+    return [[min(p[0] for p in points), min(p[1] for p in points)],
+            [max(p[0] for p in points), max(p[1] for p in points)]]
+
+
+def make_route_map(
+    route: dict, stops_by_id: dict[str, dict], title: str, bounds: list | None = None
+) -> folium.Map:
     """Render configured maritime polylines for one route comparison result."""
     map_view = folium.Map(
         location=TRABZON_CENTER,
@@ -546,12 +558,13 @@ def make_route_map(route: dict, stops_by_id: dict[str, dict], title: str) -> fol
         PolyLineTextPath(
             polyline,
             "\u25b6",
-            repeat=True,
-            offset=7,
+            repeat=False,
+            center=True,
+            offset=0,
             attributes={
                 "fill": "#b23a48" if repeated and edge_pass > 1 else "#064f59",
                 "font-weight": "bold",
-                "font-size": "14",
+                "font-size": "12",
             },
         ).add_to(map_view)
 
@@ -575,10 +588,12 @@ def make_route_map(route: dict, stops_by_id: dict[str, dict], title: str) -> fol
             popup=html.escape(stop["label"]),
             icon=folium.DivIcon(
                 html=(
-                    '<div style="background:#e67e22;color:white;border-radius:50%;'
-                    'width:26px;height:26px;text-align:center;line-height:26px;'
-                    f'font-weight:bold">{visit_number}</div>'
-                )
+                    '<div style="background:#fbbf24;color:#0b1326;border-radius:50%;'
+                    'width:32px;height:32px;text-align:center;line-height:28px;'
+                    'border:2px solid white;box-shadow:0 2px 6px #0b1326;'
+                    f'font:800 17px/28px sans-serif">{visit_number}</div>'
+                ),
+                icon_size=(32, 32), icon_anchor=(16, 16),
             ),
         ).add_to(map_view)
     folium.Marker(
@@ -588,6 +603,11 @@ def make_route_map(route: dict, stops_by_id: dict[str, dict], title: str) -> fol
         icon=folium.Icon(color="darkblue", icon="home"),
     ).add_to(map_view)
     map_view.get_root().title = title
+    if bounds is None:
+        points = [p for leg in route['legs'] for p in leg['coordinates']]
+        bounds = [[min(p[0] for p in points), min(p[1] for p in points)],
+                  [max(p[0] for p in points), max(p[1] for p in points)]]
+    map_view.fit_bounds(bounds, padding=(40, 40), max_zoom=13)
     return map_view
 
 
@@ -835,781 +855,920 @@ def observation_table_rows(observations: list[dict]) -> list[dict]:
     return rows
 
 
-st.set_page_config(page_title="AquaLitter | Görüntü denemesi", page_icon="🌊", layout="centered")
-st.title("🌊 AquaLitter | Görüntü analizi")
-st.caption("Tek fotoğraf üzerinde yerel, ön deneme")
-st.caption(f"Genel model kaynağı: {MODEL_ID}")
-
-st.info(
-    "Kullanılan Grounding DINO Tiny genel amaçlı, açık kelimeli bir nesne modelidir; "
-    "atık veya kıyı fotoğraflarına özel eğitilmemiştir. Sonuçlar yalnızca "
-    "kullanıcının doğrulayacağı atık adaylarıdır. Model güven puanı doğruluk garantisi değildir."
-)
-st.caption(
-    "Model ve tüm işlemci/tokenizer dosyaları models/grounding-dino-tiny klasöründe "
-    "bulunmalıdır. Resmî indirme yaklaşık 689 MB ağırlık içerir; komut README'dedir."
-)
-
-st.session_state.setdefault("analysis_runs", {})
-
-uploaded = st.file_uploader(
-    "Bir kıyı fotoğrafı seçin",
-    type=["jpg", "jpeg", "png", "webp"],
-    accept_multiple_files=False,
-)
-threshold = st.slider("En düşük model güven puanı", 0.10, 0.80, 0.30, 0.05)
-
-image = None
-raw_image = None
-image_sha256 = None
-if uploaded is not None:
-    try:
-        raw_image = uploaded.getvalue()
-        image_sha256 = hashlib.sha256(raw_image).hexdigest()
-        image = ImageOps.exif_transpose(Image.open(BytesIO(raw_image))).convert("RGB")
-        st.image(image, caption="Yüklenen görüntü", width="stretch")
-    except Exception as error:
-        st.error(
-            "Görüntü dosyası okunamadı veya desteklenen bir görüntü biçimi değil. "
-            f"Dosya okuma hatası ({type(error).__name__}): {error}"
+def render_analysis_page():
+    st.caption("Fotoğrafı yükleyin, gerçek yerel modelle analiz edin ve adayları inceleyin.")
+    context_badge("Genel nesne modeli · Kullanıcı doğrulaması gerekli")
+    with st.expander("Model kapsamı ve yerel kurulum ayrıntıları"):
+        st.info(
+            "Kullanılan Grounding DINO Tiny genel amaçlı, açık kelimeli bir nesne modelidir; "
+            "atık veya kıyı fotoğraflarına özel eğitilmemiştir. Sonuçlar yalnızca "
+            "kullanıcının doğrulayacağı atık adaylarıdır. Model güven puanı doğruluk garantisi değildir."
+        )
+        st.caption(
+            "Model ve tüm işlemci/tokenizer dosyaları models/grounding-dino-tiny klasöründe "
+            "bulunmalıdır. Resmî indirme yaklaşık 689 MB ağırlık içerir; komut README'dedir."
         )
 
-if uploaded is not None and image is not None:
-    analysis_hash_input = f"{image_sha256}|{threshold:.2f}|{PROMPT}"
-    analysis_id = hashlib.sha256(analysis_hash_input.encode("utf-8")).hexdigest()
+    st.session_state.setdefault("analysis_runs", {})
 
-    if st.button("Analizi başlat", type="primary", width="stretch"):
-        st.session_state.analysis_runs.pop(analysis_id, None)
+    upload_key = f"analysis_upload_{st.session_state.get('photo_upload_generation', 0)}"
+    uploaded = st.file_uploader(
+        "Bir kıyı fotoğrafı seçin", type=["jpg", "jpeg", "png", "webp"],
+        accept_multiple_files=False, key=upload_key,
+        on_change=capture_upload, args=(upload_key,),
+    )
+    if uploaded is not None:
+        st.session_state['active_photo'] = {'name': uploaded.name, 'bytes': uploaded.getvalue()}
+    photo = st.session_state.get('active_photo')
+    if photo is not None:
+        st.caption(f"Seçili fotoğraf: {photo['name']} · yalnızca bu oturumda tutulur")
+        st.button("Fotoğrafı kaldır", key='clear_active_photo', on_click=clear_photo)
+    st.session_state.setdefault('analysis_threshold', .30)
+    threshold = st.slider("En düşük model güven puanı", min_value=.10, max_value=.80,
+                          step=.05, key='analysis_threshold')
+
+    image = None
+    raw_image = None
+    image_sha256 = None
+    if photo is not None:
         try:
-            with st.spinner("Yerel model yükleniyor…"):
-                processor, model, device = load_model()
-        except ModelLoadError as error:
-            st.error(f"Model yükleme hatası. Analiz yapılmadı; tespit sonucu yok. {error}")
+            raw_image = photo["bytes"]
+            image_sha256 = hashlib.sha256(raw_image).hexdigest()
+            image = ImageOps.exif_transpose(Image.open(BytesIO(raw_image))).convert("RGB")
+            st.image(image, caption="Yüklenen görüntü", width="stretch")
         except Exception as error:
             st.error(
-                "Model yükleme hatası. Analiz yapılmadı; tespit sonucu yok. "
+                "Görüntü dosyası okunamadı veya desteklenen bir görüntü biçimi değil. "
+                f"Dosya okuma hatası ({type(error).__name__}): {error}"
+            )
+
+    if photo is not None and image is not None:
+        analysis_hash_input = f"{image_sha256}|{threshold:.2f}|{PROMPT}"
+        analysis_id = hashlib.sha256(analysis_hash_input.encode("utf-8")).hexdigest()
+
+        if st.button("Analizi başlat", type="primary", width="stretch"):
+            st.session_state.analysis_runs.pop(analysis_id, None)
+            try:
+                with st.spinner("Yerel model yükleniyor…"):
+                    processor, model, device = load_model()
+            except ModelLoadError as error:
+                st.error(f"Model yükleme hatası. Analiz yapılmadı; tespit sonucu yok. {error}")
+            except Exception as error:
+                st.error(
+                    "Model yükleme hatası. Analiz yapılmadı; tespit sonucu yok. "
+                    f"{type(error).__name__}: {error}"
+                )
+            else:
+                try:
+                    with st.spinner("Görüntü analiz ediliyor…"):
+                        raw_candidates = run_inference(
+                            image, threshold, processor, model, device
+                        )
+                except Exception as error:
+                    st.error(
+                        "Inference hatası: model yüklendi ancak görüntü analizi "
+                        f"tamamlanamadı. Tespit sonucu yok. {type(error).__name__}: {error}"
+                    )
+                else:
+                    review_candidates = group_duplicate_candidates(raw_candidates)
+                    for index, candidate in enumerate(review_candidates):
+                        candidate["detection_id"] = detection_id_for_box(
+                            image_sha256, candidate["box"]
+                        )
+                        candidate["candidate_id"] = hashlib.sha256(
+                            f"{analysis_id}:{index}:{candidate['box']}".encode("utf-8")
+                        ).hexdigest()[:20]
+
+                    st.session_state.analysis_runs[analysis_id] = {
+                        "image_sha256": image_sha256,
+                        "image_width": image.width,
+                        "image_height": image.height,
+                        "threshold": threshold,
+                        "raw_candidates": raw_candidates,
+                        "review_candidates": review_candidates,
+                    }
+
+        analysis = st.session_state.analysis_runs.get(analysis_id)
+        if analysis is not None:
+            raw_candidates = analysis["raw_candidates"]
+            review_candidates = analysis["review_candidates"]
+            if not raw_candidates:
+                st.info(NO_DETECTIONS)
+            else:
+                with st.expander("Ham model adayları ve kutu ayrıntıları"):
+                    st.subheader(f"Ham model adayları ({len(raw_candidates)})")
+                    st.caption(
+                        "Aşağıdaki tablo modelin ham ifadelerini korur. Yalnızca aynı piksel "
+                        "koordinatlarına sahip kutular incelemede gruplanır; farklı koordinatlı "
+                        "adaylar ayrı kalır ve ham satırlar silinmez."
+                    )
+                    group_for_raw = {}
+                    for group_number, candidate in enumerate(review_candidates, start=1):
+                        for raw_index in candidate["raw_indices"]:
+                            group_for_raw[raw_index] = (group_number, candidate["raw_count"])
+
+                    st.dataframe(
+                        [
+                            {
+                                "Ham sıra": raw_index + 1,
+                                "Modelin ham ifadesi": candidate["Modelin ham ifadesi"],
+                                "Model güven puanı": f"{candidate['Model güven puanı']:.1%}",
+                                "Kutu (x1, y1, x2, y2) px": candidate[
+                                    "Kutu (x1, y1, x2, y2) px"
+                                ],
+                                "Geometri grubu": (
+                                    f"Grup {group_for_raw[raw_index][0]} "
+                                    f"({group_for_raw[raw_index][1]} ham aday)"
+                                    if group_for_raw[raw_index][1] > 1
+                                    else "Tekil kutu"
+                                ),
+                            }
+                            for raw_index, candidate in enumerate(raw_candidates)
+                        ],
+                        width="stretch",
+                        hide_index=True,
+                    )
+
+                st.subheader("İnceleme adayları")
+                st.caption(
+                    "Yalnızca aynı piksel koordinatlarına sahip kutular gruplanır. Farklı "
+                    "koordinatlı adaylar ayrı kalır. Her grubun ham ifadeleri arasından etiketi seçin; sonra Onayla "
+                    "veya Reddet kararını verin. Bekleyen adaylar kaydedilmez."
+                )
+                st.image(
+                    draw_detections(image, review_candidates),
+                    caption="İnceleme için gruplandırılmış aday kutuları",
+                    width="stretch",
+                )
+
+                try:
+                    saved_observations = load_observations()
+                    saved_for_image = next(
+                        (
+                            item
+                            for item in saved_observations
+                            if item.get("image_sha256") == analysis["image_sha256"]
+                        ),
+                        None,
+                    )
+                    saved_detections = {
+                        item["detection_id"]: item
+                        for item in (saved_for_image or {}).get("approved_detections", [])
+                    }
+                except Exception as error:
+                    saved_detections = {}
+                    st.error(
+                        "Önceki gözlem kayıtları okunamadı; inceleme sonucu etkilenmedi. "
+                        f"{type(error).__name__}: {error}"
+                    )
+
+                for index, candidate in enumerate(review_candidates, start=1):
+                    candidate_id = candidate["candidate_id"]
+                    label_key = f"review_label_{candidate_id}"
+                    decision_key = f"review_decision_{candidate_id}"
+                    previous_detection = saved_detections.get(candidate["detection_id"])
+                    if label_key not in st.session_state:
+                        previous_label = (previous_detection or {}).get("label")
+                        st.session_state[label_key] = (
+                            previous_label
+                            if previous_label in candidate["label_variants"]
+                            else candidate["label_variants"][0]
+                        )
+                    if decision_key not in st.session_state:
+                        st.session_state[decision_key] = (
+                            "Onayla" if previous_detection else "Bekliyor"
+                        )
+
+                    with st.container(border=True):
+                        st.markdown(
+                            f"**Aday {index}** · model puanı "
+                            f"{candidate['Model güven puanı']:.1%} · "
+                            f"kutu {candidate['Kutu (x1, y1, x2, y2) px']}"
+                        )
+                        st.caption(
+                            f"{candidate['raw_count']} ham model ifadesi bu aynı kutuda gruplandı."
+                        )
+                        st.selectbox(
+                            "Onaylanacak model ifadesi",
+                            candidate["label_variants"],
+                            key=label_key,
+                        )
+                        st.radio(
+                            "İnceleme kararı",
+                            ["Bekliyor", "Onayla", "Reddet"],
+                            key=decision_key,
+                            horizontal=True,
+                        )
+
+                if st.button(
+                    "İnceleme kararlarını kaydet",
+                    key=f"save_review_{analysis_id}",
+                    width="stretch",
+                ):
+                    try:
+                        observations = load_observations()
+                        decisions = {}
+                        for candidate in review_candidates:
+                            candidate_id = candidate["candidate_id"]
+                            decisions[candidate_id] = {
+                                "decision": st.session_state[
+                                    f"review_decision_{candidate_id}"
+                                ],
+                                "label": st.session_state[f"review_label_{candidate_id}"],
+                            }
+                        observations, counts = apply_review_decisions(
+                            observations, analysis, review_candidates, decisions
+                        )
+                        save_observations(observations)
+                        st.success(
+                            f"Gözlem güncellendi: {counts['approved']} onay, "
+                            f"{counts['rejected']} ret, {counts['pending']} bekleyen."
+                        )
+                    except Exception as error:
+                        st.error(
+                            "Gözlem kaydı okunamadı veya güncellenemedi. "
+                            f"Model sonucu değişmedi. {type(error).__name__}: {error}"
+                        )
+
+
+def render_observation_page():
+    with st.expander("Kullanıcı kayıtları ve JSON dışa aktarma"):
+        st.subheader("Kullanıcı tarafından onaylanan gözlemler")
+        try:
+            observations = load_observations()
+        except Exception as error:
+            observations = []
+            st.error(
+                "Gözlem kayıt dosyası okunamadı; yeni model adayları değişmedi. "
                 f"{type(error).__name__}: {error}"
             )
         else:
-            try:
-                with st.spinner("Görüntü analiz ediliyor…"):
-                    raw_candidates = run_inference(
-                        image, threshold, processor, model, device
-                    )
-            except Exception as error:
-                st.error(
-                    "Inference hatası: model yüklendi ancak görüntü analizi "
-                    f"tamamlanamadı. Tespit sonucu yok. {type(error).__name__}: {error}"
+            if observations:
+                st.dataframe(
+                    observation_table_rows(observations),
+                    width="stretch",
+                    hide_index=True,
+                )
+                st.download_button(
+                    "Gözlem kayıtlarını JSON indir",
+                    data=json.dumps(
+                        {"schema_version": 2, "observations": observations},
+                        ensure_ascii=False,
+                        indent=2,
+                    ).encode("utf-8"),
+                    file_name="aqualitter_observations.json",
+                    mime="application/json",
+                    width="stretch",
                 )
             else:
-                review_candidates = group_duplicate_candidates(raw_candidates)
-                for index, candidate in enumerate(review_candidates):
-                    candidate["detection_id"] = detection_id_for_box(
-                        image_sha256, candidate["box"]
-                    )
-                    candidate["candidate_id"] = hashlib.sha256(
-                        f"{analysis_id}:{index}:{candidate['box']}".encode("utf-8")
-                    ).hexdigest()[:20]
+                st.info("Henüz kullanıcı tarafından onaylanmış fotoğraf gözlemi yok.")
 
-                st.session_state.analysis_runs[analysis_id] = {
-                    "image_sha256": image_sha256,
-                    "image_width": image.width,
-                    "image_height": image.height,
-                    "threshold": threshold,
-                    "raw_candidates": raw_candidates,
-                    "review_candidates": review_candidates,
-                }
+    st.subheader("Trabzon kıyıları · kirlilik gözlem haritası")
+    st.caption(
+        "Harita başlangıç görünümü Trabzon kıyılarıdır. Yeşil noktalar konumu kullanıcıca "
+        "belirtilmiş gerçek gözlemleri, turuncu noktalar açıkça etiketlenmiş senaryoları gösterir."
+    )
+    st.warning(
+        "Senaryo noktaları ve örnek tür sayıları temsili veridir; gerçek saha bulgusu değildir. "
+        "Nesne sayısı kg veya fiziksel kirlilik yoğunluğu anlamına gelmez."
+    )
 
-    analysis = st.session_state.analysis_runs.get(analysis_id)
-    if analysis is not None:
-        raw_candidates = analysis["raw_candidates"]
-        review_candidates = analysis["review_candidates"]
-        if not raw_candidates:
-            st.info(NO_DETECTIONS)
+    layer = st.radio(
+        "Harita katmanı",
+        ["Tümü", "Gerçek gözlemler", "Senaryo noktaları"],
+        horizontal=True,
+        key="observation_map_layer",
+    )
+
+    observation_by_id = {
+        item["observation_id"]: item
+        for item in observations
+        if item.get("observation_id")
+    }
+    observation_ids = list(observation_by_id)
+    selected_observation_id = None
+    selected_observation = None
+    if observation_ids:
+        option_labels = {
+            observation_id: (
+                f"{observation_by_id[observation_id].get('record_type', 'unclassified')} · "
+                f"{len(observation_by_id[observation_id].get('approved_detections', []))} onaylı nesne · "
+                f"{observation_by_id[observation_id].get('image_sha256', '')[:10]}"
+            )
+            for observation_id in observation_ids
+        }
+        if st.session_state.get("map_edit_observation_id") not in observation_ids:
+            st.session_state["map_edit_observation_id"] = observation_ids[0]
+        selected_observation_id = st.selectbox(
+            "Konumu ve tarihi düzenlenecek fotoğraf gözlemi",
+            observation_ids,
+            format_func=lambda value: option_labels[value],
+            key="map_edit_observation_id",
+        )
+        selected_observation = observation_by_id[selected_observation_id]
+    else:
+        st.info(
+            "Haritaya gerçek gözlem eklemek için önce fotoğrafı analiz edip en az bir adayı onaylayın."
+        )
+
+    selection_key = f"map_click_{selected_observation_id}" if selected_observation_id else None
+    selected_map_location = (
+        st.session_state.get(selection_key) if selection_key is not None else None
+    )
+
+    try:
+        map_object = make_observation_map(
+            observations,
+            layer,
+            selected_location=selected_map_location,
+        )
+        map_component_key = f"observation_map_{layer}_{selected_observation_id or 'none'}"
+        map_result = st_folium(
+            map_object,
+            key=map_component_key,
+            height=580,
+            width=None,
+            use_container_width=True,
+            returned_objects=["last_clicked"],
+        )
+    except Exception as error:
+        map_result = None
+        st.error(
+            "Harita görüntülenemedi. Harita bileşeni veya çevrim içi harita döşemeleri "
+            f"erişilemiyor olabilir. {type(error).__name__}: {error}"
+        )
+
+    if selected_observation_id and map_result:
+        try:
+            if update_map_selection(st.session_state, selected_observation_id, map_result):
+                st.rerun()
+        except ValueError as error:
+            st.error(f"Haritadan gecersiz koordinat geldi: {error}")
+
+    if selected_observation_id:
+        selected_map_location = st.session_state.get(selection_key)
+        if selected_map_location:
+            st.success(
+                "G\u00e7ici harita se\u00e7imi (hen\u00fcz kaydedilmedi): "
+                f"enlem {selected_map_location['latitude']:.6f}, "
+                f"boylam {selected_map_location['longitude']:.6f}. "
+                "K\u0131rm\u0131z\u0131 i\u015faret\u00e7i bu konumu g\u00f6sterir."
+            )
         else:
-            st.subheader(f"Ham model adayları ({len(raw_candidates)})")
             st.caption(
-                "Aşağıdaki tablo modelin ham ifadelerini korur. Yalnızca aynı piksel "
-                "koordinatlarına sahip kutular incelemede gruplanır; farklı koordinatlı "
-                "adaylar ayrı kalır ve ham satırlar silinmez."
-            )
-            group_for_raw = {}
-            for group_number, candidate in enumerate(review_candidates, start=1):
-                for raw_index in candidate["raw_indices"]:
-                    group_for_raw[raw_index] = (group_number, candidate["raw_count"])
-
-            st.dataframe(
-                [
-                    {
-                        "Ham sıra": raw_index + 1,
-                        "Modelin ham ifadesi": candidate["Modelin ham ifadesi"],
-                        "Model güven puanı": f"{candidate['Model güven puanı']:.1%}",
-                        "Kutu (x1, y1, x2, y2) px": candidate[
-                            "Kutu (x1, y1, x2, y2) px"
-                        ],
-                        "Geometri grubu": (
-                            f"Grup {group_for_raw[raw_index][0]} "
-                            f"({group_for_raw[raw_index][1]} ham aday)"
-                            if group_for_raw[raw_index][1] > 1
-                            else "Tekil kutu"
-                        ),
-                    }
-                    for raw_index, candidate in enumerate(raw_candidates)
-                ],
-                width="stretch",
-                hide_index=True,
+                "Haritaya t\u0131klay\u0131n; ge\u00e7ici i\u015faret\u00e7i ve se\u00e7ilen "
+                "enlem-boylam burada g\u00f6r\u00fcnecek."
             )
 
-            st.subheader("İnceleme adayları")
-            st.caption(
-                "Yalnızca aynı piksel koordinatlarına sahip kutular gruplanır. Farklı "
-                "koordinatlı adaylar ayrı kalır. Her grubun ham ifadeleri arasından etiketi seçin; sonra Onayla "
-                "veya Reddet kararını verin. Bekleyen adaylar kaydedilmez."
-            )
-            st.image(
-                draw_detections(image, review_candidates),
-                caption="İnceleme için gruplandırılmış aday kutuları",
-                width="stretch",
-            )
+    if selected_observation is not None:
+        st.markdown("#### Seçili gözlemin konumu ve tarihi")
+        stored_location = selected_observation.get("location") or {}
+        record_type_labels = {
+            "unclassified": "Belirsiz · seçim gerekli",
+            "real": "Gerçek gözlem",
+            "scenario": "Senaryo",
+        }
+        type_options = list(record_type_labels.values())
+        current_type_label = record_type_labels.get(
+            selected_observation.get("record_type"), type_options[0]
+        )
+        type_key = f"record_type_{selected_observation_id}"
+        if type_key not in st.session_state:
+            st.session_state[type_key] = current_type_label
+        selected_type_label = st.selectbox(
+            "Kayıt türü",
+            type_options,
+            key=type_key,
+        )
 
-            try:
-                saved_observations = load_observations()
-                saved_for_image = next(
-                    (
-                        item
-                        for item in saved_observations
-                        if item.get("image_sha256") == analysis["image_sha256"]
-                    ),
-                    None,
+        date_key = f"observation_date_{selected_observation_id}"
+        if date_key not in st.session_state:
+            st.session_state[date_key] = selected_observation.get("observation_date") or ""
+        observation_date = st.text_input(
+            "Gözlem tarihi (YYYY-AA-GG)",
+            key=date_key,
+            placeholder="Örn. 2026-10-30",
+            help="Fotoğrafın EXIF bilgisinden tarih çıkarılmaz; doğru gözlem tarihini siz girin.",
+        )
+
+        method_options = ["Haritada seç", "Enlem-boylam gir"]
+        current_method = (
+            "Enlem-boylam gir"
+            if selected_observation.get("location_source") == "manual_coordinates"
+            else "Haritada seç"
+        )
+        method_key = f"location_method_{selected_observation_id}"
+        if method_key not in st.session_state:
+            st.session_state[method_key] = current_method
+        location_method = st.radio(
+            "Konumu belirleme yöntemi",
+            method_options,
+            horizontal=True,
+            key=method_key,
+        )
+
+        latitude_text = ""
+        longitude_text = ""
+        if location_method == "Haritada se\u00e7":
+            selected_map_location = st.session_state.get(selection_key)
+            if (
+                not selected_map_location
+                and stored_location
+                and selected_observation.get("location_source") == "map_click"
+            ):
+                st.info(
+                    "Kay\u0131tl\u0131 harita koordinat\u0131: "
+                    f"{stored_location['latitude']:.6f}, {stored_location['longitude']:.6f}"
                 )
-                saved_detections = {
-                    item["detection_id"]: item
-                    for item in (saved_for_image or {}).get("approved_detections", [])
-                }
+        else:
+            latitude_key = f"latitude_{selected_observation_id}"
+            longitude_key = f"longitude_{selected_observation_id}"
+            if latitude_key not in st.session_state:
+                st.session_state[latitude_key] = (
+                    str(stored_location.get("latitude", "")) if stored_location else ""
+                )
+            if longitude_key not in st.session_state:
+                st.session_state[longitude_key] = (
+                    str(stored_location.get("longitude", "")) if stored_location else ""
+                )
+            latitude_text = st.text_input("Enlem", key=latitude_key, placeholder="41.0053")
+            longitude_text = st.text_input("Boylam", key=longitude_key, placeholder="39.7267")
+
+        if st.button(
+            "Gözlem konumunu ve tarihini kaydet",
+            key=f"save_location_{selected_observation_id}",
+            width="stretch",
+        ):
+            try:
+                if selected_type_label == "Gerçek gözlem":
+                    record_type = "real"
+                elif selected_type_label == "Senaryo":
+                    record_type = "scenario"
+                else:
+                    raise ValueError("Kayıt türünü Gerçek gözlem veya Senaryo olarak seçin.")
+
+                if location_method == "Haritada seç":
+                    selected_map_location = st.session_state.get(
+                        f"map_click_{selected_observation_id}"
+                    )
+                    if (
+                        selected_map_location is None
+                        and selected_observation.get("location_source") == "map_click"
+                    ):
+                        selected_map_location = stored_location
+                    if not selected_map_location:
+                        raise ValueError("Haritada bir noktaya tıklayarak konum seçin.")
+                    latitude, longitude = parse_coordinates(
+                        str(selected_map_location.get("latitude")),
+                        str(selected_map_location.get("longitude")),
+                    )
+                    location_source = "map_click"
+                else:
+                    latitude, longitude = parse_coordinates(latitude_text, longitude_text)
+                    location_source = "manual_coordinates"
+
+                updated_observations = update_observation_location(
+                    load_observations(),
+                    selected_observation_id,
+                    record_type,
+                    observation_date,
+                    latitude,
+                    longitude,
+                    location_source,
+                )
+                save_observations(updated_observations)
+                if location_method == "Haritada se\u00e7":
+                    st.session_state.pop(selection_key, None)
+                st.success("Gözlem kaydı güncellendi; haritadaki nokta yenilendi.")
+                st.rerun()
             except Exception as error:
-                saved_detections = {}
                 st.error(
-                    "Önceki gözlem kayıtları okunamadı; inceleme sonucu etkilenmedi. "
+                    "Gözlem konumu kaydedilmedi. Tarih ve koordinatları kontrol edin. "
                     f"{type(error).__name__}: {error}"
                 )
 
-            for index, candidate in enumerate(review_candidates, start=1):
-                candidate_id = candidate["candidate_id"]
-                label_key = f"review_label_{candidate_id}"
-                decision_key = f"review_decision_{candidate_id}"
-                previous_detection = saved_detections.get(candidate["detection_id"])
-                if label_key not in st.session_state:
-                    previous_label = (previous_detection or {}).get("label")
-                    st.session_state[label_key] = (
-                        previous_label
-                        if previous_label in candidate["label_variants"]
-                        else candidate["label_variants"][0]
-                    )
-                if decision_key not in st.session_state:
-                    st.session_state[decision_key] = (
-                        "Onayla" if previous_detection else "Bekliyor"
-                    )
-
-                with st.container(border=True):
-                    st.markdown(
-                        f"**Aday {index}** · model puanı "
-                        f"{candidate['Model güven puanı']:.1%} · "
-                        f"kutu {candidate['Kutu (x1, y1, x2, y2) px']}"
-                    )
-                    st.caption(
-                        f"{candidate['raw_count']} ham model ifadesi bu aynı kutuda gruplandı."
-                    )
-                    st.selectbox(
-                        "Onaylanacak model ifadesi",
-                        candidate["label_variants"],
-                        key=label_key,
-                    )
-                    st.radio(
-                        "İnceleme kararı",
-                        ["Bekliyor", "Onayla", "Reddet"],
-                        key=decision_key,
-                        horizontal=True,
-                    )
-
-            if st.button(
-                "İnceleme kararlarını kaydet",
-                key=f"save_review_{analysis_id}",
-                width="stretch",
-            ):
-                try:
-                    observations = load_observations()
-                    decisions = {}
-                    for candidate in review_candidates:
-                        candidate_id = candidate["candidate_id"]
-                        decisions[candidate_id] = {
-                            "decision": st.session_state[
-                                f"review_decision_{candidate_id}"
-                            ],
-                            "label": st.session_state[f"review_label_{candidate_id}"],
-                        }
-                    observations, counts = apply_review_decisions(
-                        observations, analysis, review_candidates, decisions
-                    )
-                    save_observations(observations)
-                    st.success(
-                        f"Gözlem güncellendi: {counts['approved']} onay, "
-                        f"{counts['rejected']} ret, {counts['pending']} bekleyen."
-                    )
-                except Exception as error:
-                    st.error(
-                        "Gözlem kaydı okunamadı veya güncellenemedi. "
-                        f"Model sonucu değişmedi. {type(error).__name__}: {error}"
-                    )
-
-st.subheader("Kullanıcı tarafından onaylanan gözlemler")
-try:
-    observations = load_observations()
-except Exception as error:
-    observations = []
-    st.error(
-        "Gözlem kayıt dosyası okunamadı; yeni model adayları değişmedi. "
-        f"{type(error).__name__}: {error}"
+    st.caption(
+        "Kayıtlar data/confirmed_observations.json içinde tutulur (Git dışında). "
+        "Gözlem tarihi ve konumu kullanıcı girdisidir; görüntü pikselleri coğrafi koordinat "
+        "sayılmaz. Onaylı nesne sayısı fiziksel yoğunluk veya ağırlık ölçüsü değildir."
     )
-else:
-    if observations:
-        st.dataframe(
-            observation_table_rows(observations),
-            width="stretch",
-            hide_index=True,
+
+
+def render_route_page():
+    st.session_state.pop("route_snapshot", None)
+    st.caption("Aynı başlangıç, dönüş ve ziyaretlerle mevcut ve önerilen sırayı karşılaştırın.")
+    with st.expander("Kara denetimi, kıyı tamponu ve veri sınırları"):
+        st.warning(
+            "Rota geometrileri yalnizca yerel Natural Earth kara poligonu ile kontrol edilir. "
+            f"Denetim kutusu: {TRABZON_BOUNDS[0]}-{TRABZON_BOUNDS[2]} N, "
+            f"{TRABZON_BOUNDS[1]}-{TRABZON_BOUNDS[3]} E. "
+            "10m katmani 1:10.000.000 olcekli genellestirilmis veridir; yakindaki kayalik, "
+            "iskele ve kiyidaki kucuk ayrintilari kapsamayabilir. Ek olarak "
+            f"{MIN_COAST_CLEARANCE_KM:.1f} km kiyidan uzaklik tamponu uygulanir. "
+            "Bu kaba eleme seyir guvenligi dogrulamasi degildir; OSM yalnizca harita zemini olarak kullanilir."
         )
-        st.download_button(
-            "Gözlem kayıtlarını JSON indir",
-            data=json.dumps(
-                {"schema_version": 2, "observations": observations},
-                ensure_ascii=False,
-                indent=2,
-            ).encode("utf-8"),
-            file_name="aqualitter_observations.json",
-            mime="application/json",
-            width="stretch",
-        )
-    else:
-        st.info("Henüz kullanıcı tarafından onaylanmış fotoğraf gözlemi yok.")
-
-st.subheader("Trabzon kıyıları · kirlilik gözlem haritası")
-st.caption(
-    "Harita başlangıç görünümü Trabzon kıyılarıdır. Yeşil noktalar konumu kullanıcıca "
-    "belirtilmiş gerçek gözlemleri, turuncu noktalar açıkça etiketlenmiş senaryoları gösterir."
-)
-st.warning(
-    "Senaryo noktaları ve örnek tür sayıları temsili veridir; gerçek saha bulgusu değildir. "
-    "Nesne sayısı kg veya fiziksel kirlilik yoğunluğu anlamına gelmez."
-)
-
-layer = st.radio(
-    "Harita katmanı",
-    ["Tümü", "Gerçek gözlemler", "Senaryo noktaları"],
-    horizontal=True,
-    key="observation_map_layer",
-)
-
-observation_by_id = {
-    item["observation_id"]: item
-    for item in observations
-    if item.get("observation_id")
-}
-observation_ids = list(observation_by_id)
-selected_observation_id = None
-selected_observation = None
-if observation_ids:
-    option_labels = {
-        observation_id: (
-            f"{observation_by_id[observation_id].get('record_type', 'unclassified')} · "
-            f"{len(observation_by_id[observation_id].get('approved_detections', []))} onaylı nesne · "
-            f"{observation_by_id[observation_id].get('image_sha256', '')[:10]}"
-        )
-        for observation_id in observation_ids
-    }
-    if st.session_state.get("map_edit_observation_id") not in observation_ids:
-        st.session_state["map_edit_observation_id"] = observation_ids[0]
-    selected_observation_id = st.selectbox(
-        "Konumu ve tarihi düzenlenecek fotoğraf gözlemi",
-        observation_ids,
-        format_func=lambda value: option_labels[value],
-        key="map_edit_observation_id",
-    )
-    selected_observation = observation_by_id[selected_observation_id]
-else:
-    st.info(
-        "Haritaya gerçek gözlem eklemek için önce fotoğrafı analiz edip en az bir adayı onaylayın."
-    )
-
-selection_key = f"map_click_{selected_observation_id}" if selected_observation_id else None
-selected_map_location = (
-    st.session_state.get(selection_key) if selection_key is not None else None
-)
-
-try:
-    map_object = make_observation_map(
-        observations,
-        layer,
-        selected_location=selected_map_location,
-    )
-    map_component_key = f"observation_map_{layer}_{selected_observation_id or 'none'}"
-    map_result = st_folium(
-        map_object,
-        key=map_component_key,
-        height=500,
-        width=None,
-        use_container_width=True,
-        returned_objects=["last_clicked"],
-    )
-except Exception as error:
-    map_result = None
-    st.error(
-        "Harita görüntülenemedi. Harita bileşeni veya çevrim içi harita döşemeleri "
-        f"erişilemiyor olabilir. {type(error).__name__}: {error}"
-    )
-
-if selected_observation_id and map_result:
-    try:
-        if update_map_selection(st.session_state, selected_observation_id, map_result):
-            st.rerun()
-    except ValueError as error:
-        st.error(f"Haritadan gecersiz koordinat geldi: {error}")
-
-if selected_observation_id:
-    selected_map_location = st.session_state.get(selection_key)
-    if selected_map_location:
-        st.success(
-            "G\u00e7ici harita se\u00e7imi (hen\u00fcz kaydedilmedi): "
-            f"enlem {selected_map_location['latitude']:.6f}, "
-            f"boylam {selected_map_location['longitude']:.6f}. "
-            "K\u0131rm\u0131z\u0131 i\u015faret\u00e7i bu konumu g\u00f6sterir."
-        )
-    else:
-        st.caption(
-            "Haritaya t\u0131klay\u0131n; ge\u00e7ici i\u015faret\u00e7i ve se\u00e7ilen "
-            "enlem-boylam burada g\u00f6r\u00fcnecek."
-        )
-
-if selected_observation is not None:
-    st.markdown("#### Seçili gözlemin konumu ve tarihi")
-    stored_location = selected_observation.get("location") or {}
-    record_type_labels = {
-        "unclassified": "Belirsiz · seçim gerekli",
-        "real": "Gerçek gözlem",
-        "scenario": "Senaryo",
-    }
-    type_options = list(record_type_labels.values())
-    current_type_label = record_type_labels.get(
-        selected_observation.get("record_type"), type_options[0]
-    )
-    type_key = f"record_type_{selected_observation_id}"
-    if type_key not in st.session_state:
-        st.session_state[type_key] = current_type_label
-    selected_type_label = st.selectbox(
-        "Kayıt türü",
-        type_options,
-        key=type_key,
-    )
-
-    date_key = f"observation_date_{selected_observation_id}"
-    if date_key not in st.session_state:
-        st.session_state[date_key] = selected_observation.get("observation_date") or ""
-    observation_date = st.text_input(
-        "Gözlem tarihi (YYYY-AA-GG)",
-        key=date_key,
-        placeholder="Örn. 2026-10-30",
-        help="Fotoğrafın EXIF bilgisinden tarih çıkarılmaz; doğru gözlem tarihini siz girin.",
-    )
-
-    method_options = ["Haritada seç", "Enlem-boylam gir"]
-    current_method = (
-        "Enlem-boylam gir"
-        if selected_observation.get("location_source") == "manual_coordinates"
-        else "Haritada seç"
-    )
-    method_key = f"location_method_{selected_observation_id}"
-    if method_key not in st.session_state:
-        st.session_state[method_key] = current_method
-    location_method = st.radio(
-        "Konumu belirleme yöntemi",
-        method_options,
-        horizontal=True,
-        key=method_key,
-    )
-
-    latitude_text = ""
-    longitude_text = ""
-    if location_method == "Haritada se\u00e7":
-        selected_map_location = st.session_state.get(selection_key)
-        if (
-            not selected_map_location
-            and stored_location
-            and selected_observation.get("location_source") == "map_click"
-        ):
-            st.info(
-                "Kay\u0131tl\u0131 harita koordinat\u0131: "
-                f"{stored_location['latitude']:.6f}, {stored_location['longitude']:.6f}"
-            )
-    else:
-        latitude_key = f"latitude_{selected_observation_id}"
-        longitude_key = f"longitude_{selected_observation_id}"
-        if latitude_key not in st.session_state:
-            st.session_state[latitude_key] = (
-                str(stored_location.get("latitude", "")) if stored_location else ""
-            )
-        if longitude_key not in st.session_state:
-            st.session_state[longitude_key] = (
-                str(stored_location.get("longitude", "")) if stored_location else ""
-            )
-        latitude_text = st.text_input("Enlem", key=latitude_key, placeholder="41.0053")
-        longitude_text = st.text_input("Boylam", key=longitude_key, placeholder="39.7267")
-
-    if st.button(
-        "Gözlem konumunu ve tarihini kaydet",
-        key=f"save_location_{selected_observation_id}",
-        width="stretch",
-    ):
+    route_land_mask = None
+    route_land_mask_error = None
+    if LAND_MASK_FILE.is_file():
         try:
-            if selected_type_label == "Gerçek gözlem":
-                record_type = "real"
-            elif selected_type_label == "Senaryo":
-                record_type = "scenario"
-            else:
-                raise ValueError("Kayıt türünü Gerçek gözlem veya Senaryo olarak seçin.")
-
-            if location_method == "Haritada seç":
-                selected_map_location = st.session_state.get(
-                    f"map_click_{selected_observation_id}"
-                )
-                if (
-                    selected_map_location is None
-                    and selected_observation.get("location_source") == "map_click"
-                ):
-                    selected_map_location = stored_location
-                if not selected_map_location:
-                    raise ValueError("Haritada bir noktaya tıklayarak konum seçin.")
-                latitude, longitude = parse_coordinates(
-                    str(selected_map_location.get("latitude")),
-                    str(selected_map_location.get("longitude")),
-                )
-                location_source = "map_click"
-            else:
-                latitude, longitude = parse_coordinates(latitude_text, longitude_text)
-                location_source = "manual_coordinates"
-
-            updated_observations = update_observation_location(
-                load_observations(),
-                selected_observation_id,
-                record_type,
-                observation_date,
-                latitude,
-                longitude,
-                location_source,
+            route_land_mask = load_route_land_mask(
+                str(LAND_MASK_FILE),
+                LAND_MASK_FILE.stat().st_mtime_ns,
+                LAND_MASK_FILE.stat().st_size,
+                hashlib.sha256(LAND_MASK_FILE.read_bytes()).hexdigest(),
+                TRABZON_BOUNDS,
+                MIN_COAST_CLEARANCE_KM,
             )
-            save_observations(updated_observations)
-            if location_method == "Haritada se\u00e7":
-                st.session_state.pop(selection_key, None)
-            st.success("Gözlem kaydı güncellendi; haritadaki nokta yenilendi.")
-            st.rerun()
         except Exception as error:
-            st.error(
-                "Gözlem konumu kaydedilmedi. Tarih ve koordinatları kontrol edin. "
-                f"{type(error).__name__}: {error}"
-            )
-
-st.caption(
-    "Kayıtlar data/confirmed_observations.json içinde tutulur (Git dışında). "
-    "Gözlem tarihi ve konumu kullanıcı girdisidir; görüntü pikselleri coğrafi koordinat "
-    "sayılmaz. Onaylı nesne sayısı fiziksel yoğunluk veya ağırlık ölçüsü değildir."
-)
-
-st.header("Deniz temizliği rota planı")
-st.warning(
-    "Rota geometrileri yalnizca yerel Natural Earth kara poligonu ile kontrol edilir. "
-    f"Denetim kutusu: {TRABZON_BOUNDS[0]}-{TRABZON_BOUNDS[2]} N, "
-    f"{TRABZON_BOUNDS[1]}-{TRABZON_BOUNDS[3]} E. "
-    "10m katmani 1:10.000.000 olcekli genellestirilmis veridir; yakindaki kayalik, "
-    "iskele ve kiyidaki kucuk ayrintilari kapsamayabilir. Ek olarak "
-    f"{MIN_COAST_CLEARANCE_KM:.1f} km kiyidan uzaklik tamponu uygulanir. "
-    "Bu kaba eleme seyir guvenligi dogrulamasi degildir; OSM yalnizca harita zemini olarak kullanilir."
-)
-route_land_mask = None
-route_land_mask_error = None
-if LAND_MASK_FILE.is_file():
-    try:
-        route_land_mask = load_route_land_mask(
-            str(LAND_MASK_FILE),
-            LAND_MASK_FILE.stat().st_mtime_ns,
-            LAND_MASK_FILE.stat().st_size,
-            hashlib.sha256(LAND_MASK_FILE.read_bytes()).hexdigest(),
-            TRABZON_BOUNDS,
-            MIN_COAST_CLEARANCE_KM,
-        )
-    except Exception as error:
-        route_land_mask_error = f"{type(error).__name__}: {error}"
-else:
-    route_land_mask_error = "dosya bulunamadi"
-
-if route_land_mask_error:
-    st.error(
-        "Kara-kesisim denetimi icin rota plani hazirlanamadi. Beklenen dosya: "
-        f"{LAND_MASK_FILE}. Resmi indirme: "
-        "https://naciscdn.org/naturalearth/10m/physical/ne_10m_land.zip "
-        "(ZIP dosyasini data\\ne_10m_land.zip olarak kaydedin). "
-        f"Ayrinti: {route_land_mask_error}"
-    )
-
-
-route_record_type = st.radio(
-    "Planlanacak gözlem türü",
-    ["Senaryo", "Gerçek gözlemler"],
-    horizontal=True,
-    key="marine_route_record_type",
-)
-route_records = load_observations()
-if route_record_type == "Senaryo":
-    route_candidates = list(SCENARIO_DEMO_RECORDS) + [
-        item
-        for item in route_records
-        if item.get("record_type") == "scenario"
-        and isinstance(item.get("location"), dict)
-        and item.get("approved_detections")
-    ]
-else:
-    route_candidates = [
-        item
-        for item in route_records
-        if item.get("record_type") == "real"
-        and isinstance(item.get("location"), dict)
-        and item.get("approved_detections")
-    ]
-
-route_candidates_by_id = {
-    item["observation_id"]: {
-        "label": (
-            f"{item.get('scenario_label', 'Senaryo')}"
-            if item.get("record_type") == "scenario"
-            else f"Gerçek gözlem · {item.get('observation_id', '')[:10]}"
-        ),
-        "latitude": (
-            DEMO_SCENARIO_NODES[item["observation_id"]]["latitude"]
-            if item["observation_id"] in DEMO_SCENARIO_NODES
-            else float(item["location"]["latitude"])
-        ),
-        "longitude": (
-            DEMO_SCENARIO_NODES[item["observation_id"]]["longitude"]
-            if item["observation_id"] in DEMO_SCENARIO_NODES
-            else float(item["location"]["longitude"])
-        ),
-    }
-    for item in route_candidates
-    if isinstance(item.get("location"), dict)
-}
-route_candidate_ids = list(route_candidates_by_id)
-
-if route_record_type == "Ger\u00e7ek g\u00f6zlemler" and route_candidate_ids:
-    st.info(
-        "Onayl\u0131 ger\u00e7ek g\u00f6zlemler se\u00e7ilebilir. Her g\u00f6zlem "
-        "ve ba\u011flant\u0131 yaln\u0131zca yerel kara verisiyle kesi\u015fim "
-        "ve 1 km k\u0131y\u0131 tamponu denetimini ge\u00e7erse rotaya eklenir."
-    )
-elif not route_candidate_ids:
-    st.info(
-        "Bu türde konumu ve onaylı nesnesi olan gözlem yok. Senaryo "
-        "noktaları ayrı türde tutulur."
-    )
-
-vessel_labels = {
-    key: value["label"] for key, value in DEMO_VESSEL_NODES.items()
-}
-route_start_id = st.selectbox(
-    "Senaryo teknesi başlangıç noktası",
-    list(vessel_labels),
-    format_func=lambda value: vessel_labels[value],
-    key="marine_route_start",
-)
-route_return_id = st.selectbox(
-    "Dönüş noktası",
-    list(vessel_labels),
-    format_func=lambda value: vessel_labels[value],
-    key="marine_route_return",
-)
-
-route_selected_ids = st.multiselect(
-    "Ziyaret edilecek konumlu gözlemler",
-    route_candidate_ids,
-    format_func=lambda value: route_candidates_by_id[value]["label"],
-    key=f"marine_route_stops_{'scenario' if route_record_type == 'Senaryo' else 'real'}",
-    help="Nesne sayısı kg veya fiziksel kirlilik miktarına dönüştürülmez.",
-)
-
-if route_selected_ids:
-    if len(route_selected_ids) > 6:
-        st.error("Bu prototip en fazla 6 ziyaret noktasini siralayabilir.")
+            route_land_mask_error = f"{type(error).__name__}: {error}"
     else:
-        order_options = list(permutations(route_selected_ids))
-        order_key_digest = hashlib.sha1(
-            (route_record_type + "|" + "|".join(route_selected_ids)).encode("utf-8")
-        ).hexdigest()[:10]
-        current_visit_order = st.selectbox(
-            "Kullan\u0131c\u0131n\u0131n mevcut ziyaret s\u0131ras\u0131",
-            order_options,
-            format_func=lambda order: " \u2192 ".join(
-                route_candidates_by_id[item]["label"] for item in order
+        route_land_mask_error = "dosya bulunamadi"
+
+    if route_land_mask_error:
+        st.error(
+            "Kara-kesisim denetimi icin rota plani hazirlanamadi. Beklenen dosya: "
+            f"{LAND_MASK_FILE}. Resmi indirme: "
+            "https://naciscdn.org/naturalearth/10m/physical/ne_10m_land.zip "
+            "(ZIP dosyasini data\\ne_10m_land.zip olarak kaydedin). "
+            f"Ayrinti: {route_land_mask_error}"
+        )
+
+
+    route_record_type = st.radio(
+        "Planlanacak gözlem türü",
+        ["Senaryo", "Gerçek gözlemler"],
+        horizontal=True,
+        key="marine_route_record_type",
+    )
+    route_records = load_observations()
+    if route_record_type == "Senaryo":
+        route_candidates = list(SCENARIO_DEMO_RECORDS) + [
+            item
+            for item in route_records
+            if item.get("record_type") == "scenario"
+            and isinstance(item.get("location"), dict)
+            and item.get("approved_detections")
+        ]
+    else:
+        route_candidates = [
+            item
+            for item in route_records
+            if item.get("record_type") == "real"
+            and isinstance(item.get("location"), dict)
+            and item.get("approved_detections")
+        ]
+
+    route_candidates_by_id = {
+        item["observation_id"]: {
+            "label": (
+                f"{item.get('scenario_label', 'Senaryo')}"
+                if item.get("record_type") == "scenario"
+                else f"Gerçek gözlem · {item.get('observation_id', '')[:10]}"
             ),
-            key=f"marine_visit_order_{order_key_digest}",
+            "latitude": (
+                DEMO_SCENARIO_NODES[item["observation_id"]]["latitude"]
+                if item["observation_id"] in DEMO_SCENARIO_NODES
+                else float(item["location"]["latitude"])
+            ),
+            "longitude": (
+                DEMO_SCENARIO_NODES[item["observation_id"]]["longitude"]
+                if item["observation_id"] in DEMO_SCENARIO_NODES
+                else float(item["location"]["longitude"])
+            ),
+        }
+        for item in route_candidates
+        if isinstance(item.get("location"), dict)
+    }
+    route_candidate_ids = list(route_candidates_by_id)
+
+    if route_record_type == "Ger\u00e7ek g\u00f6zlemler" and route_candidate_ids:
+        st.info(
+            "Onayl\u0131 ger\u00e7ek g\u00f6zlemler se\u00e7ilebilir. Her g\u00f6zlem "
+            "ve ba\u011flant\u0131 yaln\u0131zca yerel kara verisiyle kesi\u015fim "
+            "ve 1 km k\u0131y\u0131 tamponu denetimini ge\u00e7erse rotaya eklenir."
+        )
+    elif not route_candidate_ids:
+        st.info(
+            "Bu türde konumu ve onaylı nesnesi olan gözlem yok. Senaryo "
+            "noktaları ayrı türde tutulur."
         )
 
-        def calculate_route(progress):
-            if route_land_mask is None:
-                raise RouteNotAvailable(
-                    "Yerel kara poligonu olmadan rota baglantilari dogrulanamaz."
-                )
-            selected_route_nodes = {
-                item: route_candidates_by_id[item] for item in route_selected_ids
-            }
-            route_nodes = {
-                node_id: DEMO_VESSEL_NODES[node_id]
-                for node_id in dict.fromkeys((route_start_id, route_return_id))
-            }
-            route_nodes.update(selected_route_nodes)
-            required_node_ids = [route_start_id, route_return_id, *route_selected_ids]
-            # Reject invalid visits before creating and checking every pairwise corridor.
-            progress.put("Seçilen noktalar kara poligonu ve kıyı tamponuna göre denetleniyor")
-            for node_id in required_node_ids:
-                node = route_nodes[node_id]
-                reason = route_land_mask.validate_path(
-                    [(node["latitude"], node["longitude"])]
-                )
-                if reason:
-                    node_label = vessel_labels.get(
-                        node_id,
-                        route_candidates_by_id.get(node_id, {}).get("label", node_id),
-                    )
-                    raise RouteNotAvailable(
-                        f"{node_label} erisilemiyor: {reason} Koordinat degistirilmedi."
-                    )
-            progress.put("Deniz koridorları kara ve kıyı tamponuna göre denetleniyor")
-            validated_links, unavailable_links = build_land_checked_links(
-                route_nodes, route_land_mask
-            )
-            required_node_ids = [route_start_id, route_return_id, *route_selected_ids]
-            for node_id in required_node_ids:
-                reason = unavailable_links.get(node_id)
-                if reason:
-                    node_label = vessel_labels.get(
-                        node_id,
-                        route_candidates_by_id.get(node_id, {}).get("label", node_id),
-                    )
-                    raise RouteNotAvailable(
-                        f"{node_label} erisilemiyor: {reason} Koordinat degistirilmedi."
-                    )
+    vessel_labels = {
+        key: value["label"] for key, value in DEMO_VESSEL_NODES.items()
+    }
+    route_start_id = st.selectbox(
+        "Senaryo teknesi başlangıç noktası",
+        list(vessel_labels),
+        format_func=lambda value: vessel_labels[value],
+        key="marine_route_start",
+    )
+    route_return_id = st.selectbox(
+        "Dönüş noktası",
+        list(vessel_labels),
+        format_func=lambda value: vessel_labels[value],
+        key="marine_route_return",
+    )
 
-            progress.put("Eri\u015filebilir ziyaret s\u0131ras\u0131 optimize ediliyor")
-            optimized = compare_visit_orders(
-                route_start_id,
-                route_return_id,
-                list(current_visit_order),
-                links=validated_links,
-                unavailable=unavailable_links,
-            )
-            current_route = {
-                "nodes": optimized["current_nodes"],
-                "visits": optimized["current_order"],
-                "legs": optimized["current_legs"],
-            }
-            recommended_route = {
-                "nodes": optimized["recommended_nodes"],
-                "visits": optimized["recommended_order"],
-                "legs": optimized["recommended_legs"],
-            }
-            progress.put("\u0130ki rota haritas\u0131 ve y\u00f6n i\u015faretleri haz\u0131rlan\u0131yor")
-            current_map = make_route_map(
-                current_route, route_candidates_by_id, "Mevcut rota"
-            )
-            recommended_map = make_route_map(
-                recommended_route, route_candidates_by_id, "Onerilen rota"
-            )
-            return optimized, current_map, recommended_map
+    route_selected_ids = st.multiselect(
+        "Ziyaret edilecek konumlu gözlemler",
+        route_candidate_ids,
+        format_func=lambda value: route_candidates_by_id[value]["label"],
+        key=f"marine_route_stops_{'scenario' if route_record_type == 'Senaryo' else 'real'}",
+        help="Nesne sayısı kg veya fiziksel kirlilik miktarına dönüştürülmez.",
+    )
 
-        calculation, calculation_error, route_status = run_route_with_progress(
-            calculate_route
-        )
-        if calculation_error is not None:
-            st.error(
-                f"Rota olu\u015fturulamad\u0131. {type(calculation_error).__name__}: "
-                f"{calculation_error}"
-            )
+    if route_selected_ids:
+        if len(route_selected_ids) > 6:
+            st.error("Bu prototip en fazla 6 ziyaret noktasini siralayabilir.")
         else:
-            optimized, current_map, recommended_map = calculation
-            order_columns = st.columns(2)
-            order_columns[0].caption(
-                "Mevcut ziyaret s\u0131ras\u0131: "
-                + " \u2192 ".join(
-                    route_candidates_by_id[item]["label"]
-                    for item in optimized["current_order"]
+            order_options = list(permutations(route_selected_ids))
+            order_key_digest = hashlib.sha1(
+                (route_record_type + "|" + "|".join(route_selected_ids)).encode("utf-8")
+            ).hexdigest()[:10]
+            current_visit_order = st.selectbox(
+                "Kullan\u0131c\u0131n\u0131n mevcut ziyaret s\u0131ras\u0131",
+                order_options,
+                format_func=lambda order: " \u2192 ".join(
+                    route_candidates_by_id[item]["label"] for item in order
+                ),
+                key=f"marine_visit_order_{order_key_digest}",
+            )
+
+            def calculate_route(progress):
+                if route_land_mask is None:
+                    raise RouteNotAvailable(
+                        "Yerel kara poligonu olmadan rota baglantilari dogrulanamaz."
+                    )
+                selected_route_nodes = {
+                    item: route_candidates_by_id[item] for item in route_selected_ids
+                }
+                route_nodes = {
+                    node_id: DEMO_VESSEL_NODES[node_id]
+                    for node_id in dict.fromkeys((route_start_id, route_return_id))
+                }
+                route_nodes.update(selected_route_nodes)
+                required_node_ids = [route_start_id, route_return_id, *route_selected_ids]
+                # Reject invalid visits before creating and checking every pairwise corridor.
+                progress.put("Seçilen noktalar kara poligonu ve kıyı tamponuna göre denetleniyor")
+                for node_id in required_node_ids:
+                    node = route_nodes[node_id]
+                    reason = route_land_mask.validate_path(
+                        [(node["latitude"], node["longitude"])]
+                    )
+                    if reason:
+                        node_label = vessel_labels.get(
+                            node_id,
+                            route_candidates_by_id.get(node_id, {}).get("label", node_id),
+                        )
+                        raise RouteNotAvailable(
+                            f"{node_label} erisilemiyor: {reason} Koordinat degistirilmedi."
+                        )
+                progress.put("Deniz koridorları kara ve kıyı tamponuna göre denetleniyor")
+                validated_links, unavailable_links = build_land_checked_links(
+                    route_nodes, route_land_mask
                 )
-            )
-            order_columns[1].caption(
-                "Algoritma \u00f6nerisi: "
-                + " \u2192 ".join(
-                    route_candidates_by_id[item]["label"]
-                    for item in optimized["recommended_order"]
+                required_node_ids = [route_start_id, route_return_id, *route_selected_ids]
+                for node_id in required_node_ids:
+                    reason = unavailable_links.get(node_id)
+                    if reason:
+                        node_label = vessel_labels.get(
+                            node_id,
+                            route_candidates_by_id.get(node_id, {}).get("label", node_id),
+                        )
+                        raise RouteNotAvailable(
+                            f"{node_label} erisilemiyor: {reason} Koordinat degistirilmedi."
+                        )
+
+                progress.put("Eri\u015filebilir ziyaret s\u0131ras\u0131 optimize ediliyor")
+                optimized = compare_visit_orders(
+                    route_start_id,
+                    route_return_id,
+                    list(current_visit_order),
+                    links=validated_links,
+                    unavailable=unavailable_links,
                 )
+                current_route = {
+                    "nodes": optimized["current_nodes"],
+                    "visits": optimized["current_order"],
+                    "legs": optimized["current_legs"],
+                }
+                recommended_route = {
+                    "nodes": optimized["recommended_nodes"],
+                    "visits": optimized["recommended_order"],
+                    "legs": optimized["recommended_legs"],
+                }
+                progress.put("\u0130ki rota haritas\u0131 ve y\u00f6n i\u015faretleri haz\u0131rlan\u0131yor")
+                shared_bounds = route_comparison_bounds(optimized)
+                current_map = make_route_map(
+                    current_route, route_candidates_by_id, "Mevcut rota", shared_bounds
+                )
+                recommended_map = make_route_map(
+                    recommended_route, route_candidates_by_id, "Onerilen rota", shared_bounds
+                )
+                return optimized, current_map, recommended_map
+
+            calculation, calculation_error, route_status = run_route_with_progress(
+                calculate_route
             )
-            metric_columns = st.columns(3)
-            metric_columns[0].metric(
-                "Mevcut s\u0131ra",
-                f"{optimized['current_km']:.2f} km",
-                f"{optimized['current_km'] / KM_PER_NAUTICAL_MILE:.2f} deniz mili",
-            )
-            metric_columns[1].metric(
-                "Algoritman\u0131n \u00f6nerisi",
-                f"{optimized['recommended_km']:.2f} km",
-                f"{optimized['recommended_km'] / KM_PER_NAUTICAL_MILE:.2f} deniz mili",
-            )
-            difference = optimized["difference_km"]
-            metric_columns[2].metric(
-                "Mevcut - \u00f6nerilen mesafe",
-                f"{difference:+.2f} km",
-                f"{difference / KM_PER_NAUTICAL_MILE:+.2f} deniz mili",
-            )
-            if optimized["improved"]:
-                st.success(
-                    "\u00d6nerilen ziyaret s\u0131ras\u0131 "
-                    f"{optimized['improvement_km']:.2f} km daha k\u0131sa."
+            if calculation_error is not None:
+                st.error(
+                    f"Rota olu\u015fturulamad\u0131. {type(calculation_error).__name__}: "
+                    f"{calculation_error}"
                 )
             else:
-                st.info("Mesafe iyile\u015fmesi yok; \u00f6nerilen s\u0131ra daha k\u0131sa de\u011fil.")
-
-            render_fuel_comparison(optimized)
-
-            left_map, right_map = st.columns(2)
-            try:
-                with left_map:
-                    st.subheader("Mevcut ziyaret s\u0131ras\u0131")
-                    st_folium(
-                        current_map,
-                        key="marine_current_route_map",
-                        height=420,
-                        use_container_width=True,
-                        returned_objects=[],
+                optimized, current_map, recommended_map = calculation
+                order_columns = st.columns(2)
+                order_columns[0].caption(
+                    "Mevcut ziyaret s\u0131ras\u0131: "
+                    + " \u2192 ".join(
+                        route_candidates_by_id[item]["label"]
+                        for item in optimized["current_order"]
                     )
-                with right_map:
-                    st.subheader("Algoritman\u0131n \u00f6nerisi")
-                    st_folium(
-                        recommended_map,
-                        key="marine_recommended_route_map",
-                        height=420,
-                        use_container_width=True,
-                        returned_objects=[],
-                    )
-            except Exception as error:
-                route_status.update(
-                    label="Rota haritas\u0131 g\u00f6sterilemedi",
-                    state="error",
-                    expanded=True,
                 )
-                st.error(f"Rota haritas\u0131 g\u00f6sterilemedi: {type(error).__name__}: {error}")
-            st.caption(
-                "Mesafe \u00e7izilen koridor segmentleri boyunca Haversine ile toplan\u0131r. "
-                "Nesne say\u0131s\u0131 kg veya fiziksel kirlilik yo\u011funlu\u011fu de\u011fildir."
+                order_columns[1].caption(
+                    "Algoritma \u00f6nerisi: "
+                    + " \u2192 ".join(
+                        route_candidates_by_id[item]["label"]
+                        for item in optimized["recommended_order"]
+                    )
+                )
+                metric_columns = st.columns(3)
+                metric_columns[0].metric(
+                    "Mevcut s\u0131ra",
+                    f"{optimized['current_km']:.2f} km",
+                    f"{optimized['current_km'] / KM_PER_NAUTICAL_MILE:.2f} deniz mili",
+                )
+                metric_columns[1].metric(
+                    "Algoritman\u0131n \u00f6nerisi",
+                    f"{optimized['recommended_km']:.2f} km",
+                    f"{optimized['recommended_km'] / KM_PER_NAUTICAL_MILE:.2f} deniz mili",
+                )
+                difference = optimized["difference_km"]
+                metric_columns[2].metric(
+                    "Mevcut - \u00f6nerilen mesafe",
+                    f"{difference:+.2f} km",
+                    f"{difference / KM_PER_NAUTICAL_MILE:+.2f} deniz mili",
+                )
+                if optimized["improved"]:
+                    st.success(
+                        "\u00d6nerilen ziyaret s\u0131ras\u0131 "
+                        f"{optimized['improvement_km']:.2f} km daha k\u0131sa."
+                    )
+                else:
+                    st.info("Mesafe iyile\u015fmesi yok; \u00f6nerilen s\u0131ra daha k\u0131sa de\u011fil.")
+
+                st.session_state['route_snapshot'] = {
+                    'optimized': optimized, 'signature': current_route_signature(),
+                    'record_type': route_record_type,
+                    'start_label': vessel_labels[route_start_id],
+                    'return_label': vessel_labels[route_return_id],
+                    'visit_labels': [route_candidates_by_id[x]['label'] for x in optimized['current_order']],
+                }
+                st.button("Yakıt ve CO₂ karşılaştırmasına geç", on_click=go_to,
+                          args=(PAGES[4],), key='open_environment', width='stretch')
+
+                left_map, right_map = st.columns(2)
+                try:
+                    with left_map:
+                        st.subheader("Mevcut ziyaret s\u0131ras\u0131")
+                        st_folium(
+                            current_map,
+                            key=f"marine_current_route_map_{current_route_signature()[:12]}",
+                            height=520,
+                            use_container_width=True,
+                            returned_objects=[],
+                        )
+                    with right_map:
+                        st.subheader("Algoritman\u0131n \u00f6nerisi")
+                        st_folium(
+                            recommended_map,
+                            key=f"marine_recommended_route_map_{current_route_signature()[:12]}",
+                            height=520,
+                            use_container_width=True,
+                            returned_objects=[],
+                        )
+                except Exception as error:
+                    route_status.update(
+                        label="Rota haritas\u0131 g\u00f6sterilemedi",
+                        state="error",
+                        expanded=True,
+                    )
+                    st.error(f"Rota haritas\u0131 g\u00f6sterilemedi: {type(error).__name__}: {error}")
+                st.caption(
+                    "Mesafe \u00e7izilen koridor segmentleri boyunca Haversine ile toplan\u0131r. "
+                    "Nesne say\u0131s\u0131 kg veya fiziksel kirlilik yo\u011funlu\u011fu de\u011fildir."
+                )
+
+
+def source_digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else None
+
+
+def current_route_signature():
+    """Include current controls, records, land content and spatial settings."""
+    kind = st.session_state.get('marine_route_record_type', 'Senaryo')
+    selected = st.session_state.get(
+        f"marine_route_stops_{'scenario' if kind == 'Senaryo' else 'real'}", []
+    )
+    order_key = hashlib.sha1((kind + '|' + '|'.join(selected)).encode()).hexdigest()[:10]
+    payload = {
+        'kind': kind, 'selected': selected,
+        'start': st.session_state.get('marine_route_start', 'vessel-west'),
+        'return': st.session_state.get('marine_route_return', 'vessel-west'),
+        'order': st.session_state.get(f'marine_visit_order_{order_key}', tuple(selected)),
+        'records': source_digest(CONFIRMED_FILE), 'land': source_digest(LAND_MASK_FILE),
+        'bounds': TRABZON_BOUNDS, 'clearance': MIN_COAST_CLEARANCE_KM,
+        'vessels': DEMO_VESSEL_NODES, 'scenarios': DEMO_SCENARIO_NODES,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def current_route_snapshot():
+    snapshot = st.session_state.get('route_snapshot')
+    if snapshot and snapshot['signature'] == current_route_signature():
+        return snapshot
+    st.session_state.pop('route_snapshot', None)
+    return None
+
+
+def render_environment_page():
+    st.caption("Kara/kıyı denetiminden geçen rota mesafelerinden tahmini yakıt ve doğrudan egzoz CO₂ hesabı.")
+    snapshot = current_route_snapshot()
+    if snapshot is None:
+        st.info("Henüz hesaplanmadı. Önce Temizlik Rotası bölümünde geçerli bir rota oluşturun.")
+        st.button("Temizlik Rotası bölümüne geç", on_click=go_to, args=(PAGES[3],), key='effect_to_route')
+        return
+    context_badge(f"{snapshot['record_type']} planı · Tahmini sonuçlar")
+    st.caption(f"{snapshot['start_label']} → {snapshot['return_label']}")
+    with st.expander("Bu hesaba bağlı rota ve ziyaretler"):
+        st.write(' → '.join(snapshot['visit_labels']))
+        st.write(f"Mevcut: {snapshot['optimized']['current_km']:.2f} km · "
+                 f"Önerilen: {snapshot['optimized']['recommended_km']:.2f} km")
+    render_fuel_comparison(snapshot['optimized'])
+
+
+def render_overview_page():
+    st.caption("Fotoğraftan kullanıcı onayına, konumlu gözlemden deniz temizliği planına.")
+    try:
+        observations = load_observations()
+    except Exception as error:
+        observations = []
+        st.error(f"Gözlem kayıtları okunamadı: {error}")
+    snapshot = current_route_snapshot()
+    estimate = None
+    if snapshot is not None:
+        try:
+            estimate = compare_fuel_co2(
+                snapshot['optimized']['current_km'], snapshot['optimized']['recommended_km'],
+                st.session_state.get('marine_fuel_consumption'),
             )
+        except ValueError:
+            pass
+    cards = st.columns(4)
+    cards[0].metric("Kayıtlı fotoğraf gözlemi", str(len(observations)) if observations else "Henüz hesaplanmadı")
+    approved = sum(len(x.get('approved_detections', [])) for x in observations)
+    cards[1].metric("Onaylı nesne · kullanıcı kayıtları", str(approved) if observations else "Henüz hesaplanmadı")
+    cards[2].metric("Önerilen rota", f"{snapshot['optimized']['recommended_km']:.2f} km" if snapshot else "Henüz hesaplanmadı")
+    cards[3].metric("Tahmini CO₂ farkı", f"{estimate['difference']['co2_kg']:.2f} kg" if estimate else "Henüz hesaplanmadı")
+    st.caption("Hazır temsili demo noktaları gözlem/nesne kartlarına dahil edilmez. "
+               "Rota ve tahmini etki kartları son geçerli plana bağlıdır.")
+    map_panel, summary_panel = st.columns([3, 1], gap='large')
+    with map_panel:
+        st.subheader("Trabzon kıyıları · gözlem alanı")
+        st.caption("Yeşil: gerçek gözlem · Turuncu: senaryo · Konumlar kullanıcı girdisi veya açık demo verisidir.")
+        try:
+            st_folium(make_observation_map(observations, 'Tümü'), key='overview_observation_map',
+                      height=550, use_container_width=True, returned_objects=[])
+        except Exception as error:
+            st.error(f"Canlı harita gösterilemedi: {error}")
+    with summary_panel:
+        with st.container(border=True):
+            st.subheader("Gözlem özeti")
+            real = [x for x in observations if x.get('record_type') == 'real']
+            scenario = [x for x in observations if x.get('record_type') == 'scenario']
+            st.write(f"Gerçek gözlem: **{len(real)}**")
+            st.write(f"Kaydedilmiş senaryo: **{len(scenario)}**")
+            st.write(f"Hazır deniz senaryosu: **{len(SCENARIO_DEMO_RECORDS)} nokta**")
+            st.caption("Nesne sayısı kütle veya fiziksel kirlilik yoğunluğu değildir.")
+            st.button("Gözlem Haritasını aç", key='overview_map', on_click=go_to, args=(PAGES[2],), width='stretch')
+        with st.container(border=True):
+            st.subheader("Temizlik planı")
+            if snapshot:
+                context_badge(f"{snapshot['record_type']} · {len(snapshot['visit_labels'])} ziyaret")
+                st.write(f"Hesaplanan mesafe farkı: **{snapshot['optimized']['difference_km']:.2f} km**")
+            else:
+                st.write("Henüz hesaplanmadı")
+            st.button("Temizlik Rotasını aç", key='overview_route', on_click=go_to, args=(PAGES[3],), width='stretch')
+        st.button("Fotoğraf analizine başla", key='overview_analysis', on_click=go_to, args=(PAGES[1],), width='stretch')
+
+
+st.set_page_config(page_title='AquaLitter | Kıyı gözlem ve temizlik planı', page_icon='🌊', layout='wide')
+preserve_ui_values()
+page = shell()
+{
+    PAGES[0]: render_overview_page,
+    PAGES[1]: render_analysis_page,
+    PAGES[2]: render_observation_page,
+    PAGES[3]: render_route_page,
+    PAGES[4]: render_environment_page,
+}[page]()

@@ -22,7 +22,7 @@ Codex komut ortamındaki önceki indirme denemesi `HTTP_PROXY`/`HTTPS_PROXY` de�
 
 ### İlk örnek ve test durumu
 
-`data/sample_coco_000000039769.jpg`, model kartındaki örnek akışla ilişkili COCO val2017 kedi/uzaktan kumanda görüntüsüdür; görsel COCO'nun [CC BY 4.0 kullanım koşullarına](https://cocodataset.org/#termsofuse) tabidir. Model 30 Ekim 2026'da yerel CPU'da yüklendi ve örnek üzerinde teknik inference tamamlandı. Uygulamanın atık istemi 640×480 görüntüde `plastic bag` için 0.3169 puanlı bir aday kutu döndürdü (piksel kutusu: `7, 45, 224, 139`); bu, kedi/uzaktan kumanda fotoğrafındaki yanlış eşleşmedir ve genel model sınırlamasını gösterir. Model kartındaki `a cat. a remote control.` kontrol istemi dört kutu döndürdü. Bu örnek kıyı fotoğrafı veya atık başarım testi değildir. Gerçek kıyı fotoğrafı testi bekliyor.
+`data/sample_coco_000000039769.jpg`, model kartındaki örnek akışla ilişkili COCO val2017 kedi/uzaktan kumanda görüntüsüdür; görsel COCO'nun [CC BY 4.0 kullanım koşullarına](https://cocodataset.org/#termsofuse) tabidir. Model 30 Ekim 2026'da yerel CPU'da yüklendi ve örnek üzerinde teknik inference tamamlandı. Uygulamanın atık istemi 640×480 görüntüde `plastic bag` için 0.3169 puanlı bir aday kutu döndürdü (piksel kutusu: `7, 45, 224, 139`); bu, kedi/uzaktan kumanda fotoğrafındaki yanlış eşleşmedir ve genel model sınırlamasını gösterir. Model kartındaki `a cat. a remote control.` kontrol istemi dört kutu döndürdü. Bu örnek kıyı fotoğrafı veya atık başarım testi değildir. Sonraki kullanıcı fotoğrafı ve gerçek tarayıcı incelemesi, aşağıdaki teslim doğrulamasında ayrıca kaydedilmiştir; genel model başarımı olarak yorumlanmaz.
 
 Uygulama dosya okuma, model yükleme ve inference hatalarını ayrı gösterir. “Bu görüntüde modelin kapsamına giren atık tespit edilmedi” metni yalnızca model başarıyla yüklendikten ve inference tamamlandıktan sonra sıfır sonuç dönmesi halinde gösterilir. Fotoğraftan konum, kilogram, gerçek alan (m²) veya doğrulanmamış kirlilik yüzdesi üretilmez. Kullanıcı yüklemeleri diske kaydedilmez; gözlem konumu kullanıcı tarafından ayrıca seçilir.
 
@@ -60,6 +60,48 @@ Ardından yukarıdaki model dosyalarını indirme komutunu çalıştırıp uygul
 ```
 
 Tarayıcıda Streamlit'in yazdığı yerel adresi açın.
+
+## Stitch tasarımının Streamlit uyarlaması
+
+`design/stitch/screen.png`, `DESIGN.md` ve `code.html` görsel referans alınmıştır. Çalışan uygulama Streamlit'tir; referans HTML/Tailwind/JavaScript uygulama içine taşınmaz. `.streamlit/config.toml` ve `ui_shell.py` koyu lacivert yüzeyleri, yeşil vurguları, kartları, geniş içerik alanını ve Türkçe sol menüyü tanımlar. Yeni frontend çatısı veya API eklenmemiştir.
+
+Sol menüdeki gerçek işlevler:
+
+- **Genel Bakış:** Kullanıcı kayıtlarından fotoğraf gözlemi/onaylı nesne kartları, son geçerli rota ve tüketimden tahmini etki kartları, canlı Folium gözlem haritası. Hazır altı demo noktası kullanıcı kayıt/nesne kartlarına dahil edilmez. Sonuç yoksa `Henüz hesaplanmadı` görünür.
+- **Görüntü Analizi:** Yerel dosya yükleme, gerçek yerel model analizi, ham aday ayrıntıları, onay/red ve kayıt. Modelin genel nesne modeli olduğu görünür biçimde belirtilir.
+- **Gözlem Haritası:** Gerçek/senaryo katmanları, kayıt/JSON indirme, harita tıklamasıyla geçici konum seçme, tarih/tür/konum kaydetme.
+- **Temizlik Rotası:** Aynı başlangıç/dönüş ve ziyaretlerle mevcut/önerilen sıralar, hesaplanan mesafe farkı, iki etkileşimli rota haritası ve yüklenme/aşama göstergesi.
+- **Çevresel Etki:** Son geçerli plana bağlı tüketim girdisi ve tahmini yakıt/egzoz CO₂ karşılaştırması. Yöntem, kaynak ve kapsam açılır ayrıntılardadır.
+
+Fotoğraf baytları yalnızca Streamlit oturumunda saklanır. Menüden dönünce dosya adı, önizleme, eşik, analiz ve inceleme kararları korunur; `Fotoğrafı kaldır` ile seçim temizlenir. İşletim sistemi dosya seçicisinin kendisi yeniden boş görünse bile seçili fotoğraf kartı aynı oturumdaki kopyayı kullanır. Harita tıklaması, kaydedilmemiş tarih/tür/koordinat değişiklikleri, rota seçimleri ve tüketim de bölüm geçişlerinde korunur. Sunucu yeniden başlatılması veya yeni tarayıcı oturumu bu geçici durumu sıfırlar; kaydedilmiş gözlem dosyasına etkisi yoktur.
+
+Çevresel Etki ve Genel Bakış'ın rota kartları başarılı rota sonucuna bağlıdır. Rota girdileri, kullanıcı kayıt dosyası, kara ZIP içeriği, demo koordinatları veya ilgili mekânsal ayarlar değişirse eski plan özeti geçersizleşir. Tüketimden türetilen değerler her gösterimde yeniden hesaplanır. Stitch'teki sabit sayılar, otonom filo/sensör telemetrisi veya sertifikasyon iddiaları kullanılmaz.
+
+İki rota haritası aynı birleşik koordinat sınırına, aynı dolgu/yakınlaştırma ayarına ve aynı yüksekliğe sahiptir; ilk açılışta tüm rota noktalarını kapsar. Her bacakta bir yön oku ve yüksek kontrastlı ziyaret numaraları bulunur. Haritalar gerçek Folium/streamlit-folium bileşenleri olarak kalır; harita zemini için tarayıcı internet bağlantısı gerekir.
+
+Uyarlama öncesi çalışan durum, veri/model/sır dosyaları hariç **`9d90706`** koruma commit'iyle kaydedildi. Görsel kaynak dosyaları bu commit'e dahildir. Güncel teslim dalı mevcut origin üzerindeki [`kahveotagii`](https://github.com/betlincel/-aqualitter-ai/tree/kahveotagii) dalıdır.
+
+Otomatik doğrulama: 22 hesap/rota testi; gerçek ZIP ile iki rota haritasındaki çizgi/mesafe eşitliği, ortak görünüm sınırı ve seyrek yön okları; yakıt girdilerinin yenilenmesi; beş bölüm arasında fotoğraf/analiz, onay/red, ikinci harita tıklaması, tarih, ziyaret sırası ve tüketim korunması geçti. Gezinme testindeki görüntü ve adaylar açıkça kontrollü test fixture'ıdır; model inference başarımı testi değildir ve kullanıcı sunucusuna yüklenmez. Kullanıcı kayıtları testlerde değiştirilmedi. Tasarım sonrası gerçek tarayıcı doğrulaması kullanıcı tarafından tamamlandı; sonuçlar aşağıdaki teslim kaydındadır.
+
+### Teslim noktası — 31 Ekim 2026
+
+Aşağıdakiler kullanıcı tarafından tasarım uyarlamasından sonra **gerçek tarayıcıda** doğrulandı; otomatik AppTest sonuçlarından ayrıdır:
+
+- Beş bölümlü arayüz açılıyor ve menüler çalışıyor; görüntü analizinin kutuları ve inceleme kartları görünüyor.
+- Kullanıcının fotoğrafında dört doğru nesne onaylandı; balıktaki yanlış `food wrapper` adayı reddedildi. Ret kararı menü geçişlerinde korundu. Bu tek fotoğraf, ölçülmüş genel atık tespit başarımı iddiası değildir.
+- Gözlem Haritası mevcut dört onaylı nesneli kullanıcı kaydını gösteriyor.
+- Altı **senaryo** noktasıyla mevcut rota **64,38 km**, önerilen rota **39,22 km**, hesaplanan fark **25,16 km**.
+- **2 L/deniz mili senaryo varsayımıyla** mevcut yakıt **69,52 L**, önerilen yakıt **42,35 L**, tahmini doğrudan egzoz CO₂ farkı **73,28 kg**.
+- Rota ve tahmini CO₂ sonuçları Genel Bakış kartlarına doğru taşınıyor.
+
+Teslim, çalışan uygulama/tema, hesap modülleri, testler ve dokümantasyonu içerir. `.venv`, model ağırlıkları, `data/confirmed_observations.json`, Natural Earth ZIP'i, yerel örnek/yüklenen fotoğraflar ve sırlar Git dışında kalır; kullanıcı kaydı bu teslim işleminde değiştirilmez. Yeni kurulumda yerel model ve ZIP için yukarıdaki resmî kaynak/kurulum adımları gerekir. Mevcut kara maskesi çözünürlüğü, 1 km tampon ve tahmini emisyon kapsamı sınırlamaları geçerlidir.
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
+.\.venv\Scripts\python.exe tests\verify_demo_streamlit.py
+.\.venv\Scripts\python.exe tests\verify_fuel_streamlit.py
+.\.venv\Scripts\python.exe tests\verify_navigation_streamlit.py
+```
 
 ## Sınırlar ve kapsam
 
@@ -149,7 +191,7 @@ Kapsam yalnızca doğrudan yakıt yanması/egzoz CO₂'sidir. Yakıtın üretimi
 
 Tüketim sonlu ve sıfırdan büyük olmalıdır. Boş giriş, geçersiz giriş, sayısal taşma, rota hatası veya ziyaret seçiminin kaldırılması durumunda tahmin gösterilmez. Hesap sonuçları oturumda saklanmaz; her Streamlit turunda o anki başarılı rota ve tüketimden yeniden üretilir. Eşit rotalarda fark sıfırdır; negatif fark varsa işareti korunur.
 
-Doğrulama (30 Ekim 2026): beş hesap testi ile km/deniz mili, litre ve CO₂ dönüşümü, tam hassasiyet, sıfır fark, negatif/boş/sonlu olmayan girdiler ve taşma denetlendi. Gerçek ZIP kullanan tam Streamlit AppTest akışında boş giriş, 2→3 tüketim değişikliği, eşit rota, sıfır giriş, alanın temizlenmesi, rota hatası ve ziyaret kaldırıldığında eski tahminlerin kalmaması geçti. Kullanıcı kayıt dosyasının SHA256 özeti değişmedi. Bu yeni bölüm için gerçek tarayıcı testi yapılmadı.
+Otomatik doğrulama (30 Ekim 2026): beş hesap testi ile km/deniz mili, litre ve CO₂ dönüşümü, tam hassasiyet, sıfır fark, negatif/boş/sonlu olmayan girdiler ve taşma denetlendi. Gerçek ZIP kullanan tam Streamlit AppTest akışında boş giriş, 2→3 tüketim değişikliği, eşit rota, sıfır giriş, alanın temizlenmesi, rota hatası ve ziyaret kaldırıldığında eski tahminlerin kalmaması geçti. Kullanıcı kayıt dosyası değiştirilmedi. Kullanıcı ayrıca gerçek tarayıcıda tüketimin 2'den 1'e düşürülmesiyle sonuçların yarıya indiğini ve alan temizlenince eski sonuçların kalktığını doğruladı; tasarım sonrası sayısal sonuçlar teslim kaydında yer alır.
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_fuel_estimates.py"
